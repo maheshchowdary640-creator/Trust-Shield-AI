@@ -454,62 +454,77 @@ export async function callAnalysisModel(
 
   // 3. Try standard Google Gemini API directly
   if (geminiKey && !content) {
-    try {
-      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`;
-      
-      const parts: any[] = [];
-      parts.push({ text: `System instruction:\n${systemPrompt}\n\nUser request:` });
+    const modelsToTry = [
+      "gemini-1.5-flash",
+      "gemini-2.0-flash-exp",
+      "gemini-1.5-pro",
+    ];
 
-      if (typeof userContent === "string") {
-        parts.push({ text: userContent });
-      } else if (Array.isArray(userContent)) {
-        for (const item of userContent) {
-          const anyItem = item as any;
-          if (anyItem.type === "text") {
-            parts.push({ text: String(anyItem.text) });
-          } else if (anyItem.type === "image_url") {
-            const dataUrl = String(anyItem.image_url?.url || "");
-            const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
-            if (match) {
-              parts.push({
-                inlineData: {
-                  mimeType: match[1],
-                  data: match[2]
-                }
-              });
-            }
+    const parts: any[] = [];
+    parts.push({ text: `System instruction:\n${systemPrompt}\n\nUser request:` });
+
+    if (typeof userContent === "string") {
+      parts.push({ text: userContent });
+    } else if (Array.isArray(userContent)) {
+      for (const item of userContent) {
+        const anyItem = item as any;
+        if (anyItem.type === "text") {
+          parts.push({ text: String(anyItem.text) });
+        } else if (anyItem.type === "image_url") {
+          const dataUrl = String(anyItem.image_url?.url || "");
+          const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
+          if (match) {
+            parts.push({
+              inlineData: {
+                mimeType: match[1],
+                data: match[2],
+              },
+            });
           }
         }
       }
+    }
 
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          contents: [
-            {
-              role: "user",
-              parts: parts
-            }
-          ],
-          generationConfig: {
-            responseMimeType: "application/json"
+    for (const modelName of modelsToTry) {
+      if (content) break;
+      try {
+        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${geminiKey}`;
+        const response = await fetch(endpoint, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            contents: [
+              {
+                role: "user",
+                parts: parts,
+              },
+            ],
+            generationConfig: {
+              responseMimeType: "application/json",
+            },
+          }),
+        });
+
+        if (response.ok) {
+          const payload = (await response.json()) as {
+            candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+          };
+          content = payload.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (content) {
+            console.log(`==========================================`);
+            console.log(`[LIVE GEMINI MODEL SUCCESS] Model: ${modelName}`);
+            console.log(`[LIVE GEMINI RAW RESPONSE]:\n${content.slice(0, 400)}`);
+            console.log(`==========================================`);
           }
-        }),
-      });
-
-      if (response.ok) {
-        const payload = (await response.json()) as {
-          candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-        };
-        content = payload.candidates?.[0]?.content?.parts?.[0]?.text;
-      } else {
-        console.warn("Gemini REST API returned status:", response.status, await response.text());
+        } else {
+          const errBody = await response.text();
+          console.warn(`[GEMINI MODEL ${modelName} WARNING] Status: ${response.status} - ${errBody}`);
+        }
+      } catch (err) {
+        console.warn(`[GEMINI MODEL ${modelName} EXCEPTION]:`, err);
       }
-    } catch (err) {
-      console.warn("Gemini REST API call failed:", err);
     }
   }
 
