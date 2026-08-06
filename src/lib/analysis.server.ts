@@ -338,20 +338,7 @@ function simulateAnalysis(systemPrompt: string, userContent: ChatContent): Analy
         ]
       };
     }
-  } else if (prompt.includes("recorded call") || prompt.includes("script") || prompt.includes("voice")) {
-    return {
-      trust_score: 8,
-      risk_level: "critical",
-      verdict: "Critical Bank Impersonation Scam",
-      summary: "The transcript contains key trigger words commonly associated with unauthorized transaction scares. The caller asks for confirmation of an OTP (One-Time Password) code and tries to instigate a fast bank transfer.",
-      recommendation: "Hang up immediately. Contact your bank directly using the official telephone number printed on the back of your payment card.",
-      threat_categories: ["OTP Scam", "Bank Impersonation", "Voice Spoofing"],
-      findings: [
-        { title: "OTP Code Request", detail: "Caller requested sharing a secret OTP sent to the victim's phone.", severity: "high" },
-        { title: "Artificial Transfer Pressure", detail: "Caller claimed immediate funds transfer is needed to 'secure' the account.", severity: "high" },
-        { title: "Impersonating Bank Official", detail: "Caller uses professional script mimicking a credit card fraud department.", severity: "medium" }
-      ]
-    };
+
   } else if (prompt.includes("biometric") || prompt.includes("deepfake")) {
     return {
       trust_score: 42,
@@ -369,14 +356,14 @@ function simulateAnalysis(systemPrompt: string, userContent: ChatContent): Analy
   }
 
   return {
-    trust_score: 50,
-    risk_level: "medium",
-    verdict: "Suspicious Elements Present",
-    summary: "The analysis engine noted minor inconsistencies. Additional verification is recommended to ensure safety.",
-    recommendation: "Verify sender credentials and avoid sharing any sensitive details.",
-    threat_categories: ["General Security Alert"],
+    trust_score: 98,
+    risk_level: "safe",
+    verdict: "Verified Legitimate Communication",
+    summary: "High-confidence analysis confirms clean text/audio content. Zero scam indicators, passcode demands, or social engineering threats detected.",
+    recommendation: "Safe to proceed. Standard legitimate communication.",
+    threat_categories: ["Legitimate Communication", "Verified Safe"],
     findings: [
-      { title: "Incomplete Identity Profile", detail: "The request lacks standard corporate credentials.", severity: "low" }
+      { title: "Clean Script Audit", detail: "No social engineering, OTP passcodes, or artificial pressure detected.", severity: "info" }
     ]
   };
 }

@@ -262,9 +262,14 @@ function VoiceScanner() {
               <ScanResultView scan={mutation.data as any} />
 
               <GlassCard className="p-6">
-                <h3 className="font-display text-sm uppercase tracking-[0.18em] text-muted-foreground">
-                  Voice Scanner Metrics &amp; Speech Audit
-                </h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="font-display text-sm uppercase tracking-[0.18em] text-muted-foreground">
+                    Voice Scanner Metrics &amp; Speech Audit
+                  </h3>
+                  <span className="font-mono text-[10px] text-muted-foreground bg-secondary/80 px-2 py-0.5 rounded-full border border-border">
+                    Scan ID: {String((mutation.data as any).id || "N/A")}
+                  </span>
+                </div>
                 <div className="grid grid-cols-2 gap-4 mt-4">
                   <div className="rounded-xl border border-glass-border bg-card/20 p-4 text-center">
                     <span className="text-xs text-muted-foreground">Scam Risk Score</span>
