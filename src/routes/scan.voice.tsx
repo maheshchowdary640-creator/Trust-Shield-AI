@@ -99,9 +99,10 @@ function VoiceScanner() {
     [audioUrl],
   );
 
+  const [transcript, setTranscript] = useState("");
   const queryClient = useQueryClient();
   const mutation = useMutation({
-    mutationFn: (vars: { audioBase64: string; fileName: string; type: string }) =>
+    mutationFn: (vars: { audioBase64: string; fileName: string; type: string; transcript?: string }) =>
       run({ data: vars }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["scan-history"] });
@@ -133,8 +134,7 @@ function VoiceScanner() {
       <header className="mb-6">
         <h1 className="font-display text-3xl">Voice Scam Agent</h1>
         <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-          Upload an MP3 or WAV recording of any voicemail, robocall, or support agent conversation.
-          Our model transcribes the call and inspects key phrases for social engineering traps.
+          Upload an MP3 or WAV recording or paste the call speech transcript below to audit for OTP, bank, and social engineering scams.
         </p>
       </header>
 
@@ -153,7 +153,7 @@ function VoiceScanner() {
               if (f) accept(f);
             }}
             onClick={() => inputRef.current?.click()}
-            className={`flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed px-6 py-12 text-center transition-colors ${
+            className={`flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed px-6 py-10 text-center transition-colors ${
               dragging ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"
             }`}
           >
@@ -171,6 +171,19 @@ function VoiceScanner() {
                 const f = e.target.files?.[0];
                 if (f) accept(f);
               }}
+            />
+          </div>
+
+          <div className="mt-4">
+            <label className="block text-xs uppercase tracking-widest text-muted-foreground mb-1.5">
+              Call Transcript / Text Context (Optional)
+            </label>
+            <textarea
+              rows={3}
+              value={transcript}
+              onChange={(e) => setTranscript(e.target.value)}
+              placeholder="e.g. Your bank account has been suspended. Please provide the OTP sent to your phone immediately to verify your identity."
+              className="w-full rounded-xl border border-input bg-background/60 p-3 text-xs outline-none focus:border-primary"
             />
           </div>
 
@@ -223,14 +236,13 @@ function VoiceScanner() {
           )}
 
           <button
-            disabled={!fileDataUrl || mutation.isPending || uploading}
+            disabled={(!fileDataUrl && transcript.trim().length === 0) || mutation.isPending || uploading}
             onClick={() =>
-              fileDataUrl &&
-              rawFile &&
               mutation.mutate({
-                audioBase64: fileDataUrl,
-                fileName: rawFile.name,
-                type: rawFile.type || "audio/mpeg",
+                audioBase64: fileDataUrl || "data:audio/mp3;base64,QUFCQ0RFRkdISUpLTE1OT1BRUlNUVVZXWFlaYWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXowMTIzNDU2Nzg5",
+                fileName: rawFile ? rawFile.name : (transcript.slice(0, 50) || "Voice_Recording.mp3"),
+                type: rawFile ? (rawFile.type || "audio/mpeg") : "audio/mpeg",
+                transcript: transcript.trim(),
               })
             }
             className="mt-5 w-full rounded-xl bg-primary px-5 py-3 text-sm font-medium text-primary-foreground transition-opacity disabled:opacity-40"

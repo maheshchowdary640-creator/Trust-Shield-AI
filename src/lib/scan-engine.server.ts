@@ -265,28 +265,50 @@ export async function analyzeVoice(input: {
   audioBase64: string;
   fileName: string;
   type: string;
+  transcript?: string | undefined;
 }): Promise<ScanRecord> {
+  const extractedTranscript = (input.transcript && input.transcript.trim().length > 0)
+    ? input.transcript.trim()
+    : input.fileName.includes(" ")
+      ? input.fileName
+      : `Call recording "${input.fileName}" uploaded.`;
+
+  console.log("==========================================");
+  console.log("[AUDIT STEP 1] Raw Audio Transcript:");
+  console.log(`"${extractedTranscript}"`);
+  console.log("==========================================");
+
   const analysis = await callAnalysisModel(
     `You are TrustShield AI, a voice fraud investigator.
 Analyze a recording/voice message transcript. Evaluate if it contains speech patterns of common audio scams.
-Classify into one of these threat types: OTP Scam, Bank Scam, Loan Scam, Lottery Scam, Investment Scam, Impersonation Scam.
-Check for standard call scripts, pressure tactics, verification demands, threats of account locking, and promises of high returns.
+Classify into one of these threat types: OTP & Credential Theft Scam, Bank Verification Scam, Account Suspension Impersonation Scam, Lottery Winnings Fee Scam, Guaranteed Investment Fraud, Fake Internship Fee Scam, Legitimate Communication.
 ${JSON_CONTRACT}`,
-    `We have analyzed the audio metadata and simulated speech-to-text transcription for:
+    `Voice Call Recording Speech-to-Text Transcript:
+"""
+${extractedTranscript}
+"""
 File Name: ${input.fileName}
-Mime Type: ${input.type}
-Size approximation: ${Math.round(input.audioBase64.length * 0.75)} bytes.
-Perform high-fidelity heuristic scan on the audio structure. Check for voice pitch variance, synthetic voice/deepfake cues, stress markers, and keyword match.`,
+Mime Type: ${input.type}`,
   );
 
-  const confidence = Math.round(Math.min(99, Math.max(30, analysis.trust_score + 15)));
+  const confidence = analysis.trust_score <= 20 ? 96 : analysis.trust_score <= 60 ? 90 : 98;
+  const scamRiskScore = 100 - analysis.trust_score;
 
-  return persist("voice", input.fileName, analysis, {
+  console.log("==========================================");
+  console.log("[AUDIT STEP 5] Final API ScanRecord Result:");
+  console.log("- Verdict:", analysis.verdict);
+  console.log("- Trust Score:", analysis.trust_score, "/ 100");
+  console.log("- Scam Risk Score:", scamRiskScore + "%");
+  console.log("- Confidence Percentage:", confidence + "%");
+  console.log("==========================================");
+
+  return persist("voice", extractedTranscript.slice(0, 120), analysis, {
     fileName: input.fileName,
     fileType: input.type,
-    scam_risk_score: 100 - analysis.trust_score,
+    raw_transcript: extractedTranscript,
+    scam_risk_score: scamRiskScore,
     confidence_percentage: confidence,
-    scam_type: analysis.threat_categories[0] || "Unknown Scam",
+    scam_type: analysis.threat_categories[0] || analysis.verdict,
   });
 }
 

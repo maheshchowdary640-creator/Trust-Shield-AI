@@ -18,8 +18,9 @@ const urlInput = z.object({ url: z.string().min(3).max(2048) });
 
 const voiceInput = z.object({
   audioBase64: z.string().min(100).max(9_000_000),
-  fileName: z.string().min(1).max(200),
+  fileName: z.string().min(1).max(500),
   type: z.string().min(1).max(100),
+  transcript: z.string().max(10000).optional(),
 });
 
 const deepfakeInput = z.object({
