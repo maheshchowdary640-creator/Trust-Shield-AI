@@ -319,7 +319,13 @@ export async function analyzeDeepfake(input: {
 }): Promise<ScanRecord> {
   const isImage = input.type.startsWith("image/");
 
-  // If it's an image, pass it to Gemini for vision deepfake checks. Otherwise do file metadata analysis.
+  console.log("==========================================");
+  console.log("[DEEPFAKE DEBUG STEP 1] Image/Media Payload Received:");
+  console.log(`- File Name: ${input.fileName}`);
+  console.log(`- Mime Type: ${input.type}`);
+  console.log(`- Data Payload Length: ${input.mediaBase64.length} characters`);
+  console.log("==========================================");
+
   const userContent = isImage
     ? [
         {
@@ -330,6 +336,8 @@ export async function analyzeDeepfake(input: {
       ]
     : `Inspect video file ${input.fileName} (${input.type}) for deepfake patterns. Check eye blinking rates, lip-sync alignment, lighting continuity, facial border blurring, and double eyebrows.`;
 
+  console.log("[DEEPFAKE DEBUG STEP 2] Sending Gemini Vision Request...");
+
   const analysis = await callAnalysisModel(
     `You are TrustShield AI, an advanced Deepfake Detection agent.
 Evaluate if the uploaded image or video is authentic or AI-generated/manipulated.
@@ -339,6 +347,15 @@ ${JSON_CONTRACT}`,
   );
 
   const probability = 100 - analysis.trust_score;
+
+  console.log("==========================================");
+  console.log("[DEEPFAKE DEBUG STEP 3] Gemini Vision Analysis Result:");
+  console.log("- Verdict:", analysis.verdict);
+  console.log("- Authenticity Score:", analysis.trust_score, "/ 100");
+  console.log("- Deepfake Probability:", probability + "%");
+  console.log("- Risk Level:", analysis.risk_level.toUpperCase());
+  console.log("- Findings:", analysis.findings.map(f => `[${f.title}]: ${f.detail}`));
+  console.log("==========================================");
 
   return persist("deepfake", input.fileName, analysis, {
     fileName: input.fileName,
