@@ -60,21 +60,36 @@ function simulateAnalysis(systemPrompt: string, userContent: ChatContent): Analy
       : JSON.stringify(userContent)
   ).toLowerCase();
   
-  if (prompt.includes("screenshot")) {
+  if (prompt.includes("voice fraud investigator") || prompt.includes("recorded call") || prompt.includes("audio scam") || prompt.includes("audio structure")) {
     return {
-      trust_score: 15,
-      risk_level: "high",
-      verdict: "Urgent Phishing Scam Detected",
-      summary: "This screenshot displays classic social engineering indicators. The sender details are hidden or mismatched, and it contains high-pressure urgency language requesting immediate verification details.",
-      recommendation: "Do not reply to the message, click any links, or provide personal credentials. Report the sender immediately.",
-      threat_categories: ["Phishing", "Brand Impersonation", "Social Engineering"],
+      trust_score: 12,
+      risk_level: "critical",
+      verdict: "Urgent Voice Scam Detected",
+      summary: "Voice threat analysis detected critical audio fraud markers including OTP passcode extraction demands, bank impersonation call scripts, and artificial pressure tactics.",
+      recommendation: "Hang up immediately. Do not share any OTP codes, banking credentials, or transfer funds. Contact your bank directly via their official number.",
+      threat_categories: ["OTP Scam", "Bank Impersonation", "Voice Spoofing", "Social Engineering"],
       findings: [
-        { title: "High Urgency Pressure", detail: "The text creates artificial panic, demanding action within a tight timeline.", severity: "high" },
-        { title: "Suspicious Verification Link", detail: "The URL shown deviates from the official corporate domain pattern.", severity: "high" },
-        { title: "Masked Sender Details", detail: "The sender address uses a generic webmail rather than a corporate domain.", severity: "medium" }
+        { title: "OTP Passcode Demand", detail: "The recording contains urgent demands to share a One-Time Password sent to your phone.", severity: "high" },
+        { title: "Impersonation Call Script", detail: "Caller uses standardized bank fraud department scripts designed to trigger panic.", severity: "high" },
+        { title: "Artificial Urgency & Transfer Pressure", detail: "Demands immediate fund movement to a 'safe account' to prevent account locking.", severity: "high" },
+        { title: "Voice Pitch Variance / Synthetic Artifacts", detail: "Acoustic markers show synthetic voice generation or spoofed caller ID signature.", severity: "medium" }
       ]
     };
-  } else if (prompt.includes("job")) {
+  } else if (prompt.includes("biometric") || prompt.includes("deepfake analyst") || prompt.includes("face-swap")) {
+    return {
+      trust_score: 18,
+      risk_level: "high",
+      verdict: "Suspected AI Face-Swap Artifacts",
+      summary: "Visual assessment reveals boundary blending errors around the jawline and irregular double-blink patterns in the eyes. Lighting angles do not change correctly in correlation with facial movement.",
+      recommendation: "Exercise extreme caution before trusting or forwarding this media file, especially if it relates to financial requests.",
+      threat_categories: ["Deepfake", "AI Generated Media", "Facial Manipulation"],
+      findings: [
+        { title: "Facial Boundary Artifacts", detail: "Micro-discontinuities detected along the jawline and hair border.", severity: "high" },
+        { title: "Unnatural Eye Blink Frequency", detail: "Blink cadence is irregular compared to natural human speech samples.", severity: "medium" },
+        { title: "Lighting & Shadow Inconsistency", detail: "Specular highlights on pupils do not match the environment light sources.", severity: "medium" }
+      ]
+    };
+  } else if (prompt.includes("recruitment fraud specialist") || prompt.includes("job offer")) {
     return {
       trust_score: 35,
       risk_level: "medium",
@@ -88,7 +103,21 @@ function simulateAnalysis(systemPrompt: string, userContent: ChatContent): Analy
         { title: "Alternative Chat Redirection", detail: "Recruiter requests moving communication to encrypted messaging apps.", severity: "medium" }
       ]
     };
-  } else if (prompt.includes("phishing") || prompt.includes("url") || prompt.includes("domain")) {
+  } else if (prompt.includes("ocr & visual phishing") || prompt.includes("screenshot")) {
+    return {
+      trust_score: 15,
+      risk_level: "high",
+      verdict: "Urgent Phishing Scam Detected",
+      summary: "This screenshot displays classic social engineering indicators. The sender details are hidden or mismatched, and it contains high-pressure urgency language requesting immediate verification details.",
+      recommendation: "Do not reply to the message, click any links, or provide personal credentials. Report the sender immediately.",
+      threat_categories: ["Phishing", "Brand Impersonation", "Social Engineering"],
+      findings: [
+        { title: "High Urgency Pressure", detail: "The text creates artificial panic, demanding action within a tight timeline.", severity: "high" },
+        { title: "Suspicious Verification Link", detail: "The URL shown deviates from the official corporate domain pattern.", severity: "high" },
+        { title: "Masked Sender Details", detail: "The sender address uses a generic webmail rather than a corporate domain.", severity: "medium" }
+      ]
+    };
+  } else if (prompt.includes("url threat intelligence") || prompt.includes("domain trust") || prompt.includes("check a url")) {
     // Extract domain or host from input
     const urlMatch = contentStr.match(/(?:https?:\/\/)?([a-z0-9.-]+\.[a-z]{2,})/i);
     const host = urlMatch ? urlMatch[1].toLowerCase() : "";
