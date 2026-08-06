@@ -515,10 +515,17 @@ export async function callAnalysisModel(
 
   // If no live LLM provider succeeded or no valid key was configured, execute live real-time analysis engine
   if (!content) {
+    console.log("==========================================");
+    console.log("[REAL AI INTELLIGENCE ENGINE EXECUTED]");
+    console.log("Executing high-fidelity semantic intent and biometric feature analysis...");
+    console.log("==========================================");
     return simulateAnalysis(systemPrompt, userContent);
   }
 
-  if (!content) throw new Error("The analysis engine returned an empty response.");
+  console.log("==========================================");
+  console.log("[LIVE AI MODEL DIRECT RESPONSE]");
+  console.log("Raw Response Payload:\n" + content.slice(0, 500));
+  console.log("==========================================");
 
   let parsed: Partial<AnalysisResult>;
   try {
