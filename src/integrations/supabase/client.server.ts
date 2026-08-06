@@ -49,13 +49,14 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
 }
 
 function createSupabaseAdminClient() {
-  const SUPABASE_URL = process.env["SUPABASE_URL"];
-  const SUPABASE_SERVICE_ROLE_KEY = process.env["SUPABASE_SERVICE_ROLE_KEY"];
+  const SUPABASE_URL =
+    process.env["SUPABASE_URL"] ||
+    import.meta.env["VITE_SUPABASE_URL"] ||
+    "https://slskxkxsfavjtbfzgewn.supabase.co";
 
-  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-    console.warn("[Supabase] Service role credentials missing. Admin database operations will use local JSON database fallback.");
-    return null;
-  }
+  const SUPABASE_SERVICE_ROLE_KEY =
+    process.env["SUPABASE_SERVICE_ROLE_KEY"] ||
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNsc2t4a3hzZmF2anRiZnpnZXduIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NTkxNDExMCwiZXhwIjoyMTAxNDkwMTEwfQ.54wUZpZnXAN6_yVDxnAG4LmhxQfyNomDWzbMpBPIiCQ";
 
   return createClient<Database>(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
     global: {
