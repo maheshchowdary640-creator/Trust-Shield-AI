@@ -30,8 +30,6 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
 }
 
 function createSupabaseClient() {
-  // Use import.meta.env for client-side (Vite build-time replacement)
-  // Fall back to process.env for SSR (server-side rendering)
   const SUPABASE_URL =
     import.meta.env["VITE_SUPABASE_URL"] ||
     process.env["SUPABASE_URL"] ||
@@ -42,14 +40,23 @@ function createSupabaseClient() {
     process.env["SUPABASE_PUBLISHABLE_KEY"] ||
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNsc2t4a3hzZmF2anRiZnpnZXduIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU5MTQxMTAsImV4cCI6MjEwMTQ5MDExMH0.hj8anD5rFNXAvsAVjXOeWFDhPZkDM6cfHQWtrPbtJ_s";
 
+  const isBrowser = typeof window !== "undefined";
+
+  const memoryStorage = {
+    getItem: () => null,
+    setItem: () => {},
+    removeItem: () => {},
+  };
+
   return createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
     global: {
       fetch: createSupabaseFetch(SUPABASE_PUBLISHABLE_KEY),
     },
     auth: {
-      storage: typeof window !== "undefined" ? localStorage : undefined,
-      persistSession: true,
-      autoRefreshToken: true,
+      storage: isBrowser ? window.localStorage : memoryStorage,
+      persistSession: isBrowser,
+      autoRefreshToken: isBrowser,
+      detectSessionInUrl: isBrowser,
     },
   });
 }
