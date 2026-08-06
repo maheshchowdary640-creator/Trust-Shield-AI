@@ -50,6 +50,9 @@ function VoiceScanner() {
 
   const accept = useCallback(
     (f: File) => {
+      mutation.reset();
+      setTranscript("");
+      setFileDataUrl(null);
       setFileError(null);
       setProgress(0);
       setUploading(false);
