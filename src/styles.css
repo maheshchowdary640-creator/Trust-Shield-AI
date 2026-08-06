@@ -1,0 +1,195 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * TrustShield AI design system — futuristic dark cyber-security theme.
+ * All colors are oklch semantic tokens. Never hardcode colors in components.
+ */
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ring-offset-background: var(--background);
+  --color-safe: var(--safe);
+  --color-caution: var(--caution);
+  --color-danger: var(--danger);
+  --color-critical: var(--critical);
+  --color-glass: var(--glass);
+  --color-glass-border: var(--glass-border);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+:root {
+  --radius: 0.875rem;
+  --background: oklch(0.16 0.03 258);
+  --foreground: oklch(0.96 0.01 250);
+  --card: oklch(0.21 0.035 260);
+  --card-foreground: oklch(0.96 0.01 250);
+  --popover: oklch(0.2 0.035 260);
+  --popover-foreground: oklch(0.96 0.01 250);
+  --primary: oklch(0.78 0.16 190);
+  --primary-foreground: oklch(0.17 0.04 245);
+  --secondary: oklch(0.28 0.04 262);
+  --secondary-foreground: oklch(0.95 0.01 250);
+  --muted: oklch(0.26 0.035 262);
+  --muted-foreground: oklch(0.7 0.03 254);
+  --accent: oklch(0.66 0.18 285);
+  --accent-foreground: oklch(0.98 0.01 250);
+  --destructive: oklch(0.62 0.23 22);
+  --destructive-foreground: oklch(0.98 0.01 250);
+  --border: oklch(0.34 0.04 262);
+  --input: oklch(0.3 0.04 262);
+  --ring: oklch(0.78 0.16 190);
+
+  --safe: oklch(0.78 0.18 160);
+  --caution: oklch(0.83 0.16 88);
+  --danger: oklch(0.72 0.19 45);
+  --critical: oklch(0.63 0.24 20);
+
+  --glass: oklch(0.24 0.035 262 / 55%);
+  --glass-border: oklch(0.85 0.06 205 / 14%);
+
+  --chart-1: oklch(0.78 0.16 190);
+  --chart-2: oklch(0.66 0.18 285);
+  --chart-3: oklch(0.78 0.18 160);
+  --chart-4: oklch(0.83 0.16 88);
+  --chart-5: oklch(0.66 0.22 22);
+
+  --sidebar: oklch(0.19 0.03 260);
+  --sidebar-foreground: oklch(0.96 0.01 250);
+  --sidebar-primary: oklch(0.78 0.16 190);
+  --sidebar-primary-foreground: oklch(0.17 0.04 245);
+  --sidebar-accent: oklch(0.26 0.035 262);
+  --sidebar-accent-foreground: oklch(0.96 0.01 250);
+  --sidebar-border: oklch(0.32 0.04 262);
+  --sidebar-ring: oklch(0.78 0.16 190);
+
+  --gradient-cyber: linear-gradient(135deg, oklch(0.78 0.16 190), oklch(0.66 0.18 285));
+  --gradient-surface: linear-gradient(
+    160deg,
+    oklch(0.26 0.04 262 / 70%),
+    oklch(0.19 0.03 258 / 60%)
+  );
+  --shadow-glow: 0 0 40px -12px oklch(0.78 0.16 190 / 45%);
+  --shadow-panel: 0 24px 60px -30px oklch(0.05 0.02 260 / 90%);
+}
+
+.dark {
+  color-scheme: dark;
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    background-image:
+      radial-gradient(60rem 40rem at 10% -10%, oklch(0.78 0.16 190 / 10%), transparent 60%),
+      radial-gradient(50rem 40rem at 95% 0%, oklch(0.66 0.18 285 / 12%), transparent 55%);
+    background-attachment: fixed;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+  }
+}
+
+@utility glass-panel {
+  background: var(--gradient-surface);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(18px) saturate(140%);
+  box-shadow: var(--shadow-panel);
+}
+
+@utility text-gradient-cyber {
+  background: var(--gradient-cyber);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@utility grid-backdrop {
+  background-image:
+    linear-gradient(to right, oklch(0.85 0.06 205 / 6%) 1px, transparent 1px),
+    linear-gradient(to bottom, oklch(0.85 0.06 205 / 6%) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+@utility glow-ring {
+  box-shadow: var(--shadow-glow);
+}
+
+@keyframes scan-sweep {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(400%);
+  }
+}
+
+@keyframes pulse-ring {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.96);
+  }
+  50% {
+    opacity: 0.85;
+    transform: scale(1.04);
+  }
+}
