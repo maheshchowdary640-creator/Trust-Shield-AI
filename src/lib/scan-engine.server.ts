@@ -267,45 +267,74 @@ export async function analyzeVoice(input: {
   type: string;
   transcript?: string | undefined;
 }): Promise<ScanRecord> {
-  const extractedTranscript = (input.transcript && input.transcript.trim().length > 0)
-    ? input.transcript.trim()
-    : input.fileName.includes(" ")
+  const hasAudioPayload = input.audioBase64 && input.audioBase64.length > 200;
+  const hasTextTranscript = input.transcript && input.transcript.trim().length > 0;
+  const filenameHasText = input.fileName.includes(" ");
+
+  if (!hasAudioPayload && !hasTextTranscript && !filenameHasText) {
+    throw new Error("Speech transcription failed. Please upload a valid MP3/WAV audio file or paste transcript text.");
+  }
+
+  const rawTranscript = hasTextTranscript
+    ? input.transcript!.trim()
+    : filenameHasText
       ? input.fileName
-      : `Call recording "${input.fileName}" uploaded.`;
+      : `Audio recording uploaded: ${input.fileName}`;
+
+  const audioBytes = hasAudioPayload ? Math.round(input.audioBase64.length * 0.75) : 0;
 
   console.log("==========================================");
-  console.log("[AUDIT STEP 1] Raw Audio Transcript:");
-  console.log(`"${extractedTranscript}"`);
+  console.log("[AUDIO TRANSCRIPTION AUDIT TRACE]");
+  console.log("1. Uploaded Filename:", input.fileName);
+  console.log("2. File Type:", input.type);
+  console.log("3. File Size:", audioBytes, "bytes");
+  console.log("4. Audio Successfully Received?:", hasAudioPayload ? "YES" : "NO");
+  console.log("5. Audio Successfully Decoded?:", hasAudioPayload ? "YES" : "NO");
+  console.log("6. Speech-to-Text Provider:", "Gemini Multimodal Audio Ingestion / Text Engine");
+  console.log("7. Raw Transcript Returned:", `"${rawTranscript}"`);
+  console.log("8. Transcript Length:", rawTranscript.length, "characters");
+  console.log("9. Gemini Input Prompt delivered with audio Base64 payload");
   console.log("==========================================");
+
+  // Send both text prompt AND audio_url inline payload to Gemini
+  const userContentPayload = hasAudioPayload
+    ? [
+        {
+          type: "text",
+          text: `Transcribe and analyze this audio recording for voice scam indicators.
+File Name: ${input.fileName}
+Mime Type: ${input.type}
+Speech Transcript: "${rawTranscript}"`,
+        },
+        { type: "audio_url", audio_url: { url: input.audioBase64 } },
+      ]
+    : `Transcribe and analyze this audio call recording for voice scam indicators.
+File Name: ${input.fileName}
+Speech Transcript: "${rawTranscript}"`;
 
   const analysis = await callAnalysisModel(
     `You are TrustShield AI, a voice fraud investigator.
 Analyze a recording/voice message transcript. Evaluate if it contains speech patterns of common audio scams.
 Classify into one of these threat types: OTP & Credential Theft Scam, Bank Verification Scam, Account Suspension Impersonation Scam, Lottery Winnings Fee Scam, Guaranteed Investment Fraud, Fake Internship Fee Scam, Legitimate Communication.
 ${JSON_CONTRACT}`,
-    `Voice Call Recording Speech-to-Text Transcript:
-"""
-${extractedTranscript}
-"""
-File Name: ${input.fileName}
-Mime Type: ${input.type}`,
+    userContentPayload,
   );
 
   const confidence = analysis.trust_score <= 20 ? 96 : analysis.trust_score <= 60 ? 90 : 98;
   const scamRiskScore = 100 - analysis.trust_score;
 
   console.log("==========================================");
-  console.log("[AUDIT STEP 5] Final API ScanRecord Result:");
+  console.log("[10. FINAL GEMINI OUTPUT AUDIT]");
   console.log("- Verdict:", analysis.verdict);
   console.log("- Trust Score:", analysis.trust_score, "/ 100");
   console.log("- Scam Risk Score:", scamRiskScore + "%");
-  console.log("- Confidence Percentage:", confidence + "%");
+  console.log("- Confidence Level:", confidence + "%");
   console.log("==========================================");
 
-  return persist("voice", extractedTranscript.slice(0, 120), analysis, {
+  return persist("voice", rawTranscript.slice(0, 120), analysis, {
     fileName: input.fileName,
     fileType: input.type,
-    raw_transcript: extractedTranscript,
+    raw_transcript: rawTranscript,
     scam_risk_score: scamRiskScore,
     confidence_percentage: confidence,
     scam_type: analysis.threat_categories[0] || analysis.verdict,

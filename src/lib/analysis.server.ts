@@ -470,8 +470,8 @@ export async function callAnalysisModel(
         const anyItem = item as any;
         if (anyItem.type === "text") {
           parts.push({ text: String(anyItem.text) });
-        } else if (anyItem.type === "image_url") {
-          const dataUrl = String(anyItem.image_url?.url || "");
+        } else if (anyItem.type === "image_url" || anyItem.type === "audio_url") {
+          const dataUrl = String(anyItem.image_url?.url || anyItem.audio_url?.url || "");
           const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
           if (match) {
             parts.push({

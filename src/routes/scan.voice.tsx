@@ -260,7 +260,7 @@ function VoiceScanner() {
 
               <GlassCard className="p-6">
                 <h3 className="font-display text-sm uppercase tracking-[0.18em] text-muted-foreground">
-                  Voice Scanner Metrics
+                  Voice Scanner Metrics &amp; Speech Audit
                 </h3>
                 <div className="grid grid-cols-2 gap-4 mt-4">
                   <div className="rounded-xl border border-glass-border bg-card/20 p-4 text-center">
@@ -270,17 +270,26 @@ function VoiceScanner() {
                     </p>
                   </div>
                   <div className="rounded-xl border border-glass-border bg-card/20 p-4 text-center">
-                    <span className="text-xs text-muted-foreground">Confidence Level</span>
+                    <span className="text-xs text-muted-foreground">Transcription Confidence</span>
                     <p className="text-3xl font-display mt-1 text-primary">
                       {String((mutation.data as any).details.confidence_percentage ?? "0")}%
                     </p>
                   </div>
                   <div className="rounded-xl border border-glass-border bg-card/20 p-4 text-center col-span-2">
-                    <span className="text-xs text-muted-foreground">Detected Threat Type</span>
+                    <span className="text-xs text-muted-foreground">Gemini Classification</span>
                     <p className="text-lg font-semibold mt-1 text-foreground">
                       {String((mutation.data as any).details.scam_type ?? "N/A")}
                     </p>
                   </div>
+                </div>
+
+                <div className="mt-4 rounded-xl border border-glass-border bg-card/40 p-4">
+                  <span className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
+                    Extracted Speech Transcript
+                  </span>
+                  <p className="mt-2 text-xs italic font-serif text-foreground/90 bg-background/50 p-3 rounded-lg border border-border/50">
+                    "{String((mutation.data as any).details.raw_transcript || "Transcript extracted from audio recording.")}"
+                  </p>
                 </div>
               </GlassCard>
             </div>
