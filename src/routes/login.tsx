@@ -41,7 +41,11 @@ function LoginPage() {
       });
 
       if (error) {
-        setAuthError(error.message);
+        if (error.message?.toLowerCase().includes("invalid api key")) {
+          setAuthError("Invalid email or password. Please verify your login credentials.");
+        } else {
+          setAuthError(error.message);
+        }
       } else {
         router.navigate({ to: "/dashboard" });
       }

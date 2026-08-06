@@ -30,15 +30,20 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
 }
 
 function createSupabaseClient() {
-  const SUPABASE_URL =
+  const rawUrl =
     import.meta.env["VITE_SUPABASE_URL"] ||
     process.env["SUPABASE_URL"] ||
     "https://slskxkxsfavjtbfzgewn.supabase.co";
 
-  const SUPABASE_PUBLISHABLE_KEY =
+  const rawKey =
     import.meta.env["VITE_SUPABASE_PUBLISHABLE_KEY"] ||
+    import.meta.env["VITE_SUPABASE_ANON_KEY"] ||
     process.env["SUPABASE_PUBLISHABLE_KEY"] ||
+    process.env["SUPABASE_ANON_KEY"] ||
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNsc2t4a3hzZmF2anRiZnpnZXduIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU5MTQxMTAsImV4cCI6MjEwMTQ5MDExMH0.hj8anD5rFNXAvsAVjXOeWFDhPZkDM6cfHQWtrPbtJ_s";
+
+  const SUPABASE_URL = String(rawUrl).trim().replace(/["']/g, "");
+  const SUPABASE_PUBLISHABLE_KEY = String(rawKey).trim().replace(/["']/g, "");
 
   const isBrowser = typeof window !== "undefined";
 

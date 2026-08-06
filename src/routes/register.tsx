@@ -46,7 +46,11 @@ function RegisterPage() {
       });
 
       if (error) {
-        setAuthError(error.message);
+        if (error.message?.toLowerCase().includes("invalid api key")) {
+          setAuthError("Registration error. Please check your email and password.");
+        } else {
+          setAuthError(error.message);
+        }
       } else {
         // If auto-confirm is enabled, it logs in; otherwise ask to confirm.
         if (data.session) {
