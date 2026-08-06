@@ -54,6 +54,11 @@ function extractJson(raw: string): unknown {
 
 function simulateAnalysis(systemPrompt: string, userContent: ChatContent): AnalysisResult {
   const prompt = systemPrompt.toLowerCase();
+  const contentStr = (
+    typeof userContent === "string"
+      ? userContent
+      : JSON.stringify(userContent)
+  ).toLowerCase();
   
   if (prompt.includes("screenshot")) {
     return {
@@ -84,19 +89,64 @@ function simulateAnalysis(systemPrompt: string, userContent: ChatContent): Analy
       ]
     };
   } else if (prompt.includes("phishing") || prompt.includes("url") || prompt.includes("domain")) {
-    return {
-      trust_score: 25,
-      risk_level: "high",
-      verdict: "Phishing Domain Mismatch",
-      summary: "This domain registration is extremely recent (registered less than 30 days ago) and is redirecting to a page that mimics a known banking login portal. It has no verifiable SSL history.",
-      recommendation: "Close the browser tab immediately. Do not enter any login credentials or payment card details on this domain.",
-      threat_categories: ["Typosquatting", "Phishing Site", "Recent Domain"],
-      findings: [
-        { title: "Brand Spoofing", detail: "The host attempts to mimic a major brand name with a minor character alteration.", severity: "high" },
-        { title: "Newly Registered Domain", detail: "This domain was created very recently, which is typical of throwaway scam sites.", severity: "high" },
-        { title: "No Corporate Registrant Info", detail: "Whois records show private registration masking the owner's identity.", severity: "low" }
-      ]
-    };
+    // Extract domain or host from input
+    const urlMatch = contentStr.match(/(?:https?:\/\/)?([a-z0-9.-]+\.[a-z]{2,})/i);
+    const host = urlMatch ? urlMatch[1].toLowerCase() : "";
+
+    const isKnownTrusted = [
+      "google.com", "aistudio.google.com", "github.com", "microsoft.com", "apple.com", 
+      "amazon.com", "paypal.com", "youtube.com", "wikipedia.org", "stackoverflow.com",
+      "openai.com", "linkedin.com", "twitter.com", "x.com", "gitlab.com"
+    ].some(trusted => host === trusted || host.endsWith("." + trusted));
+
+    const isSuspicious = [
+      "amaz0n", "paypaI", "login-security", "verify-account", "bank-update", 
+      "secure-auth", ".xyz", ".top", ".free", ".click", "000webhost"
+    ].some(bad => contentStr.includes(bad));
+
+    if (isKnownTrusted && !isSuspicious) {
+      return {
+        trust_score: 98,
+        risk_level: "safe",
+        verdict: "Verified Legitimate Domain",
+        summary: `The domain "${host || "this URL"}" is an established, high-reputation platform with verified SSL encryption, official WHOIS registration, and zero reported phishing flags.`,
+        recommendation: "This link is safe to visit. Official domain ownership and SSL encryption verified.",
+        threat_categories: ["Verified Site", "Secure SSL", "Trusted Domain"],
+        findings: [
+          { title: "Established Domain History", detail: "Domain has been registered for over 10+ years with verified corporate ownership.", severity: "info" },
+          { title: "Valid SSL/TLS Certificate", detail: "Secure encrypted HTTPS connection issued by a verified Certificate Authority.", severity: "info" },
+          { title: "Clean Reputation Database", detail: "No malicious flags or typosquatting indicators found across global threat databases.", severity: "info" }
+        ]
+      };
+    } else if (isSuspicious) {
+      return {
+        trust_score: 18,
+        risk_level: "high",
+        verdict: "High Risk Phishing Warning",
+        summary: `The domain "${host || "this link"}" displays strong typosquatting patterns, unverified SSL certificates, or newly registered infrastructure mimicking a corporate brand.`,
+        recommendation: "Close the browser tab immediately. Do not enter any login credentials, payment details, or personal information.",
+        threat_categories: ["Typosquatting", "Phishing Site", "Recent Domain"],
+        findings: [
+          { title: "Brand Spoofing", detail: "The host attempts to mimic a major brand name with character alterations or suspicious subdomains.", severity: "high" },
+          { title: "Newly Registered Infrastructure", detail: "Domain creation patterns match short-lived phishing disposable servers.", severity: "high" },
+          { title: "Unverified Registrant", detail: "Whois record analysis reveals masked privacy protection hiding ownership.", severity: "medium" }
+        ]
+      };
+    } else {
+      return {
+        trust_score: 85,
+        risk_level: "low",
+        verdict: "Standard Active Web Domain",
+        summary: `The domain "${host || "this link"}" is an active web domain with standard SSL encryption and no active security blacklists.`,
+        recommendation: "Proceed with standard browsing caution. Verify login credentials before submitting sensitive forms.",
+        threat_categories: ["Active Domain", "Standard SSL"],
+        findings: [
+          { title: "Active HTTP Connection", detail: "Domain responds cleanly with standard web server headers.", severity: "info" },
+          { title: "Standard SSL Encryption", detail: "Traffic is encrypted using standard TLS protocols.", severity: "info" },
+          { title: "No Immediate Blacklist Flags", detail: "Domain is not currently listed on major public threat feeds.", severity: "low" }
+        ]
+      };
+    }
   } else if (prompt.includes("recorded call") || prompt.includes("script") || prompt.includes("voice")) {
     return {
       trust_score: 8,
@@ -188,7 +238,7 @@ export async function callAnalysisModel(
     content = payload.choices?.[0]?.message?.content;
   } else if (geminiKey) {
     // 2. Call standard Google Gemini API directly
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`;
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`;
     
     // Map ChatContent structure to standard Gemini parts format
     const parts: any[] = [];
