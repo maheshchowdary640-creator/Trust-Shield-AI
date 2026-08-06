@@ -76,9 +76,14 @@ function simulateAnalysis(systemPrompt: string, userContent: ChatContent): Analy
       ]
     };
   } else if (prompt.includes("deepfake") || prompt.includes("biometric") || prompt.includes("face-swap") || prompt.includes("facial consistency")) {
+    // Strip out prompt instructions from contentStr when checking for media keywords
+    const userPayloadOnly = contentStr
+      .replace(/inspect this image for deepfake[\s\S]*/gi, "")
+      .replace(/inspect video file[\s\S]*/gi, "");
+
     const isExplicitFake = [
-      "fake", "deepfake", "swap", "ai_gen", "midjourney", "synthetic", "faceapp", "reface", "manipulated"
-    ].some(k => contentStr.includes(k));
+      "fake", "deepfake", "swap", "ai_gen", "midjourney", "synthetic", "faceapp", "reface", "manipulated", "altered"
+    ].some(k => userPayloadOnly.includes(k));
 
     if (isExplicitFake) {
       return {
@@ -142,63 +147,69 @@ function simulateAnalysis(systemPrompt: string, userContent: ChatContent): Analy
     const urlMatch = contentStr.match(/(?:https?:\/\/)?([a-z0-9.-]+\.[a-z]{2,})/i);
     const host = urlMatch ? urlMatch[1].toLowerCase() : "";
 
-    const isKnownTrusted = [
-      "google.com", "aistudio.google.com", "github.com", "microsoft.com", "apple.com", 
-      "amazon.com", "paypal.com", "youtube.com", "wikipedia.org", "stackoverflow.com",
-      "openai.com", "linkedin.com", "twitter.com", "x.com", "gitlab.com", "vercel.app",
-      "render.com", "netlify.app", "supabase.co", "coursera.org", "udemy.com", 
-      "medium.com", "cloudflare.com", "figma.com", "canva.com", "notion.so",
-      "slack.com", "zoom.us", "spotify.com", "netflix.com", "adobe.com", "salesforce.com"
-    ].some(trusted => host === trusted || host.endsWith("." + trusted));
+    // Official trusted apex domains
+    const trustedApexes = [
+      "google.com", "github.com", "microsoft.com", "apple.com", "amazon.com", 
+      "paypal.com", "youtube.com", "wikipedia.org", "stackoverflow.com",
+      "openai.com", "linkedin.com", "twitter.com", "x.com", "gitlab.com", 
+      "vercel.app", "render.com", "netlify.app", "supabase.co", "coursera.org", 
+      "udemy.com", "medium.com", "cloudflare.com", "figma.com", "canva.com", 
+      "notion.so", "slack.com", "zoom.us", "spotify.com", "netflix.com", 
+      "adobe.com", "salesforce.com"
+    ];
 
-    if (isKnownTrusted) {
+    const isOfficial = trustedApexes.some(apex => host === apex || host.endsWith("." + apex));
+
+    // Brand names often spoofed in phishing links
+    const brandKeywords = [
+      "paypal", "amazon", "google", "apple", "microsoft", "netflix", "bank", 
+      "facebook", "instagram", "whatsapp", "binance", "coinbase", "metamask", 
+      "chase", "wellsfargo", "citibank", "verification", "security-center", 
+      "account-update", "login-portal"
+    ];
+
+    const containsBrand = brandKeywords.some(brand => host.includes(brand));
+    const isSuspiciousTLD = [".xyz", ".top", ".tk", ".ml", ".ga", ".cf", ".gq", ".site", ".online", ".click", ".link", ".info", ".net", ".work", ".center"].some(ext => host.endsWith(ext));
+    const containsPhishKeywords = ["verify", "verification", "center", "secure", "login", "update", "auth", "signin", "support", "billing", "service", "claim"].some(k => host.includes(k));
+
+    if (isOfficial) {
       return {
         trust_score: 98,
         risk_level: "safe",
-        verdict: "Verified Legitimate Domain",
-        summary: `The domain "${host || "this URL"}" is an established, high-reputation platform with verified SSL encryption, official WHOIS registration, and zero reported phishing flags.`,
-        recommendation: "This link is safe to visit. Official domain ownership and SSL encryption verified.",
-        threat_categories: ["Verified Site", "Secure SSL", "Trusted Domain"],
+        verdict: "Verified Official Domain",
+        summary: `The domain "${host || "this link"}" is an official corporate domain with verified WHOIS registration, established domain authority, and secure SSL credentials.`,
+        recommendation: "Link is safe. Official corporate domain verified.",
+        threat_categories: ["Verified Site", "Secure SSL", "Official Brand"],
         findings: [
-          { title: "Established Domain History", detail: "Domain has been registered for over 10+ years with verified corporate ownership.", severity: "info" },
-          { title: "Valid SSL/TLS Certificate", detail: "Secure encrypted HTTPS connection issued by a verified Certificate Authority.", severity: "info" },
-          { title: "Clean Reputation Database", detail: "No malicious flags or typosquatting indicators found across global threat databases.", severity: "info" }
+          { title: "Official Corporate Domain", detail: "Host matches official verified brand registry.", severity: "info" },
+          { title: "Valid SSL/TLS Certificate", detail: "Encrypted connection issued by a trusted Certificate Authority.", severity: "info" },
+          { title: "Clean Security Record", detail: "No malicious flags or phishing complaints reported.", severity: "info" }
         ]
       };
-    }
-
-    const isSuspicious = [
-      "amaz0n", "paypaI", "login-security", "verify-account", "bank-update", 
-      "secure-auth", ".xyz", ".top", ".tk", ".ml", ".ga", ".cf", ".gq", 
-      "000webhost", "typosquat"
-    ].some(bad => contentStr.includes(bad));
-
-    if (isSuspicious) {
+    } else if (containsBrand || (containsPhishKeywords && isSuspiciousTLD) || host.includes("paypal-") || host.includes("-verification")) {
       return {
-        trust_score: 18,
+        trust_score: 15,
         risk_level: "high",
-        verdict: "High Risk Phishing Warning",
-        summary: `The domain "${host || "this link"}" displays strong typosquatting patterns, unverified SSL certificates, or newly registered infrastructure mimicking a corporate brand.`,
-        recommendation: "Close the browser tab immediately. Do not enter any login credentials, payment details, or personal information.",
-        threat_categories: ["Typosquatting", "Phishing Site", "Recent Domain"],
+        verdict: "Brand Impersonation & Phishing Risk",
+        summary: `The domain "${host}" uses corporate brand keywords on an unauthorized external domain. This is a classic phishing indicator designed to capture credentials.`,
+        recommendation: "DO NOT CLICK OR ENTER CREDENTIALS. Close this page immediately.",
+        threat_categories: ["Phishing Site", "Brand Impersonation", "Typosquatting"],
         findings: [
-          { title: "Brand Spoofing", detail: "The host attempts to mimic a major brand name with character alterations or suspicious subdomains.", severity: "high" },
-          { title: "Newly Registered Infrastructure", detail: "Domain creation patterns match short-lived phishing disposable servers.", severity: "high" },
-          { title: "Unverified Registrant", detail: "Whois record analysis reveals masked privacy protection hiding ownership.", severity: "medium" }
+          { title: "Unauthorized Brand Impersonation", detail: `The host "${host}" includes corporate brand keywords but is NOT hosted on the official domain.`, severity: "high" },
+          { title: "High-Risk Phishing Domain Pattern", detail: "Combines security keywords ('verification-center') with non-official domain extensions.", severity: "high" },
+          { title: "Credential Harvesting Trap", detail: "Structure matches known fake payment verification portals.", severity: "high" }
         ]
       };
     } else {
       return {
-        trust_score: 91,
-        risk_level: "safe",
-        verdict: "Verified Active Web Domain",
-        summary: `The domain "${host || "this link"}" is an active web domain operating over HTTPS with clean domain registration records.`,
-        recommendation: "Link verified. Standard encrypted HTTPS connection.",
-        threat_categories: ["Active Domain", "Secure SSL"],
+        trust_score: 82,
+        risk_level: "low",
+        verdict: "Standard External Web Domain",
+        summary: `The domain "${host || "this link"}" is an active web domain operating over HTTPS.`,
+        recommendation: "Proceed with standard browsing caution.",
+        threat_categories: ["Active Domain", "Standard SSL"],
         findings: [
-          { title: "Active HTTP Connection", detail: "Domain responds cleanly with standard web server headers.", severity: "info" },
-          { title: "Standard SSL Encryption", detail: "Traffic is encrypted using standard TLS protocols.", severity: "info" },
-          { title: "Clean Threat Record", detail: "No active security blacklists or phishing complaints found.", severity: "info" }
+          { title: "Active HTTP Connection", detail: "Server responds cleanly over encrypted TLS.", severity: "info" }
         ]
       };
     }
