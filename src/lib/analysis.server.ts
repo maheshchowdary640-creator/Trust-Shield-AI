@@ -60,29 +60,103 @@ function simulateAnalysis(systemPrompt: string, userContent: ChatContent): Analy
       : JSON.stringify(userContent)
   ).toLowerCase();
   
-  if (prompt.includes("voice fraud investigator") || prompt.includes("recorded call") || prompt.includes("audio scam") || prompt.includes("audio structure")) {
-    return {
-      trust_score: 12,
-      risk_level: "critical",
-      verdict: "Urgent Voice Scam Detected",
-      summary: "Voice threat analysis detected critical audio fraud markers including OTP passcode extraction demands, bank impersonation call scripts, and artificial pressure tactics.",
-      recommendation: "Hang up immediately. Do not share any OTP codes, banking credentials, or transfer funds. Contact your bank directly via their official number.",
-      threat_categories: ["OTP Scam", "Bank Impersonation", "Voice Spoofing", "Social Engineering"],
-      findings: [
-        { title: "OTP Passcode Demand", detail: "The recording contains urgent demands to share a One-Time Password sent to your phone.", severity: "high" },
-        { title: "Impersonation Call Script", detail: "Caller uses standardized bank fraud department scripts designed to trigger panic.", severity: "high" },
-        { title: "Artificial Urgency & Transfer Pressure", detail: "Demands immediate fund movement to a 'safe account' to prevent account locking.", severity: "high" },
-        { title: "Voice Pitch Variance / Synthetic Artifacts", detail: "Acoustic markers show synthetic voice generation or spoofed caller ID signature.", severity: "medium" }
-      ]
-    };
+  if (prompt.includes("voice fraud investigator") || prompt.includes("recorded call") || prompt.includes("audio scam") || prompt.includes("audio structure") || prompt.includes("voice")) {
+    const textToScan = contentStr.toLowerCase();
+
+    // Red flag keywords
+    const redFlags: string[] = [];
+    let scamType = "Impersonation Scam";
+    let riskPoints = 0;
+
+    if (/otp|one-time password|passcode|6-digit|verification code|pin code/.test(textToScan)) {
+      redFlags.push("OTP Passcode Extraction Request");
+      scamType = "OTP Scam";
+      riskPoints += 45;
+    }
+    if (/bank|credit card|fraud department|unauthorized transaction|account frozen|card blocked|safe account/.test(textToScan)) {
+      redFlags.push("Bank Impersonation Call Script");
+      if (scamType === "Impersonation Scam") scamType = "Bank Scam";
+      riskPoints += 35;
+    }
+    if (/congratulations|won|lottery winner|cash prize|jackpot|claim prize/.test(textToScan)) {
+      redFlags.push("Lottery Winnings Claim Request");
+      scamType = "Lottery Scam";
+      riskPoints += 40;
+    }
+    if (/guaranteed|100% returns|double your money|risk-free|crypto investment|insider tip/.test(textToScan)) {
+      redFlags.push("Guaranteed Investment Return Pitch");
+      scamType = "Investment Scam";
+      riskPoints += 35;
+    }
+    if (/pre-approved loan|instant loan|advance deposit|processing fee|loan sanction/.test(textToScan)) {
+      redFlags.push("Advance Loan Fee Requirement");
+      scamType = "Loan Scam";
+      riskPoints += 35;
+    }
+    if (/work from home|data entry|high daily payout|telegram recruiter|registration fee/.test(textToScan)) {
+      redFlags.push("Remote Work Task Deposit Request");
+      scamType = "Job Scam";
+      riskPoints += 35;
+    }
+    if (/act now|within 10 minutes|warrant|legal action|do not hang up|police/.test(textToScan)) {
+      redFlags.push("High Pressure Urgency Tactics");
+      riskPoints += 25;
+    }
+
+    // Green flag keywords (Legitimate Communication)
+    const greenFlags: string[] = [];
+    if (/appointment reminder|scheduled visit|doctor|dentist|clinic|hospital/.test(textToScan)) {
+      greenFlags.push("Verified Appointment Reminder Notification");
+    }
+    if (/customer support|help desk|ticket reference|support query/.test(textToScan)) {
+      greenFlags.push("Legitimate Customer Support Service");
+    }
+    if (/delivery|package|out for delivery|shipment update/.test(textToScan)) {
+      greenFlags.push("Standard Service Delivery Notice");
+    }
+    if (/general notification|school closing|community alert|hours of operation/.test(textToScan)) {
+      greenFlags.push("Informational Community Message");
+    }
+
+    if (greenFlags.length > 0 && redFlags.length === 0) {
+      return {
+        trust_score: 96,
+        risk_level: "safe",
+        verdict: "Verified Legitimate Communication",
+        summary: `Speech analysis identified legitimate communication markers (${greenFlags.join(", ")}). Zero audio fraud patterns or passcode extraction triggers were detected.`,
+        recommendation: "Communication verified as safe. Standard informational message.",
+        threat_categories: ["Legitimate Communication", "Verified Service", "Safe Audio"],
+        findings: [
+          { title: greenFlags[0], detail: "Audio contents match standard automated notification patterns.", severity: "info" },
+          { title: "No Passcode or Fund Requests", detail: "Zero high-pressure passcode or payment demands found.", severity: "info" }
+        ]
+      };
+    } else {
+      const computedScore = Math.max(8, Math.min(30, 100 - (riskPoints > 0 ? riskPoints : 75)));
+      const riskLevel = computedScore < 15 ? "critical" : "high";
+
+      return {
+        trust_score: computedScore,
+        risk_level: riskLevel,
+        verdict: `Urgent ${scamType} Detected`,
+        summary: `Voice threat analysis detected critical audio fraud indicators: ${redFlags.length > 0 ? redFlags.join(", ") : "Standard scam call script with artificial urgency"}.`,
+        recommendation: "Hang up immediately. Do not share any OTP passcodes, banking credentials, or transfer funds. Contact your official institution directly.",
+        threat_categories: [scamType, "Voice Spoofing", "Social Engineering", "Audio Fraud"],
+        findings: redFlags.length > 0
+          ? redFlags.map(rf => ({ title: rf, detail: "Detected high-risk speech triggers commonly associated with social engineering scams.", severity: "high" as const }))
+          : [
+              { title: "Standard Scam Call Script", detail: "Audio structure mimics known telephone fraud patterns.", severity: "high" },
+              { title: "Urgency Pressure", detail: "High-pressure tactics designed to induce rapid user error.", severity: "high" }
+            ]
+      };
+    }
   } else if (prompt.includes("deepfake") || prompt.includes("biometric") || prompt.includes("face-swap") || prompt.includes("facial consistency")) {
-    // Strip out prompt instructions from contentStr when checking for media keywords
     const userPayloadOnly = contentStr
-      .replace(/inspect this image for deepfake[\s\S]*/gi, "")
-      .replace(/inspect video file[\s\S]*/gi, "");
+      .replace(/inspect this image for deepfake or ai manipulation artifacts/gi, "")
+      .replace(/inspect video file for deepfake patterns/gi, "");
 
     const isExplicitFake = [
-      "fake", "deepfake", "swap", "ai_gen", "midjourney", "synthetic", "faceapp", "reface", "manipulated", "altered"
+      "fake", "deepfake", "swap", "ai_gen", "midjourney", "synthetic", "faceapp", "reface", "manipulated", "altered", "generated"
     ].some(k => userPayloadOnly.includes(k));
 
     if (isExplicitFake) {
@@ -90,27 +164,29 @@ function simulateAnalysis(systemPrompt: string, userContent: ChatContent): Analy
         trust_score: 18,
         risk_level: "high",
         verdict: "Confirmed AI Deepfake Manipulation",
-        summary: "Multi-spectral biometric assessment detected strong facial boundary discontinuities, irregular eye blink cadence, and synthetic texture smoothing typical of AI face-swap models.",
-        recommendation: "Exercise extreme caution before trusting or forwarding this media file, especially if it relates to financial requests.",
+        summary: "Multi-category biometric audit detected severe anomalies across Facial Border Continuity (18/100), Eye Symmetry (20/100), Lighting (15/100), and Skin Texture (22/100) consistent with synthetic AI face-swapping.",
+        recommendation: "Exercise extreme caution before trusting or forwarding this media file, especially for identity or financial requests.",
         threat_categories: ["Deepfake", "AI Generated Media", "Facial Manipulation", "Biometric Spoofing"],
         findings: [
-          { title: "Facial Boundary Artifacts", detail: "Micro-discontinuities detected along the jawline and hair border.", severity: "high" },
-          { title: "Unnatural Eye Blink Frequency", detail: "Blink cadence is irregular compared to natural human speech samples.", severity: "high" },
-          { title: "Lighting & Shadow Inconsistency", detail: "Specular highlights on pupils do not match the environment light sources.", severity: "medium" }
+          { title: "Facial Border Continuity (18/100)", detail: "Micro-discontinuities detected along the jawline and hair border.", severity: "high" },
+          { title: "Eye Reflection Symmetry (20/100)", detail: "Pupil catchlights do not align with environmental light sources.", severity: "high" },
+          { title: "Lighting Coherence (15/100)", detail: "Shadow angles on facial contours contradict ambient light vectors.", severity: "high" },
+          { title: "Dermal Texture Smoothing (22/100)", detail: "High-frequency skin pore detail replaced with GAN spatial smoothing.", severity: "medium" }
         ]
       };
     } else {
       return {
-        trust_score: 94,
+        trust_score: 95,
         risk_level: "safe",
         verdict: "Verified Authentic Natural Photo",
-        summary: "Visual biometric analysis confirms natural dermal pore texture, specular eye reflection continuity, and authentic anatomical proportions across facial vectors.",
-        recommendation: "Media verified as authentic natural capture. No AI face-swap or synthetic manipulation signatures detected.",
+        summary: "Multi-category biometric audit confirms high authentic scores across Facial Border Continuity (96/100), Eye Symmetry (94/100), Lighting (95/100), and Dermal Texture (92/100).",
+        recommendation: "Media verified as authentic natural capture. Zero synthetic manipulation or face-swap signatures detected.",
         threat_categories: ["Authentic Media", "Natural Capture", "Verified Photo"],
         findings: [
-          { title: "Natural Skin Texture", detail: "High-frequency skin pore variations match natural camera sensor noise distribution.", severity: "info" },
-          { title: "Continuous Eye Pupil Reflections", detail: "Specular highlights across both pupils align correctly with ambient light sources.", severity: "info" },
-          { title: "Consistent Facial Geometry", detail: "Facial landmarks and jawline boundaries exhibit zero blending artifacts.", severity: "info" }
+          { title: "Facial Border Continuity (96/100)", detail: "Facial boundaries and hair margins exhibit natural edge anti-aliasing.", severity: "info" },
+          { title: "Eye Reflection Symmetry (94/100)", detail: "Catchlights across pupils align correctly with ambient light sources.", severity: "info" },
+          { title: "Lighting Coherence (95/100)", detail: "Specular highlights match surrounding environment light sources.", severity: "info" },
+          { title: "Natural Skin Pore Texture (92/100)", detail: "High-frequency dermal noise matches natural camera sensor optics.", severity: "info" }
         ]
       };
     }
