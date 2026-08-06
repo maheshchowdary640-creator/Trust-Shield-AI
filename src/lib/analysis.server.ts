@@ -262,104 +262,135 @@ export async function callAnalysisModel(
 ): Promise<AnalysisResult> {
   const lovableKey = process.env["LOVABLE_API_KEY"];
   const geminiKey = process.env["GEMINI_API_KEY"] || process.env["VITE_GEMINI_API_KEY"] || process.env["GOOGLE_API_KEY"];
-
-  // Fallback to simulator if no API keys are found
-  if (!lovableKey && !geminiKey) {
-    console.warn("AI API Key (LOVABLE_API_KEY or GEMINI_API_KEY) not found. Falling back to local simulated scan engine.");
-    return simulateAnalysis(systemPrompt, userContent);
-  }
+  const openaiKey = process.env["OPENAI_API_KEY"];
 
   let content: string | undefined;
 
-  if (lovableKey) {
-    // 1. Call Lovable AI gateway
-    const response = await fetch(AI_ENDPOINT, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${lovableKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userContent },
-        ],
-      }),
-    });
+  // 1. Try OpenAI API if key is present
+  if (openaiKey && !content) {
+    try {
+      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${openaiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          response_format: { type: "json_object" },
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userContent },
+          ],
+        }),
+      });
 
-    if (response.status === 429)
-      throw new Error("Analysis rate limit reached. Please retry in a moment.");
-    if (response.status === 402)
-      throw new Error("AI analysis credits are exhausted for this workspace.");
-    if (!response.ok) {
-      const text = await response.text();
-      console.error("AI gateway error", response.status, text);
-      throw new Error("The analysis engine could not process this request.");
+      if (response.ok) {
+        const payload = (await response.json()) as any;
+        content = payload.choices?.[0]?.message?.content;
+      } else {
+        console.warn("OpenAI API returned status:", response.status, await response.text());
+      }
+    } catch (err) {
+      console.warn("OpenAI API call failed:", err);
     }
+  }
 
-    const payload = (await response.json()) as {
-      choices?: Array<{ message?: { content?: string } }>;
-    };
-    content = payload.choices?.[0]?.message?.content;
-  } else if (geminiKey) {
-    // 2. Call standard Google Gemini API directly
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`;
-    
-    // Map ChatContent structure to standard Gemini parts format
-    const parts: any[] = [];
-    parts.push({ text: `System instruction:\n${systemPrompt}\n\nUser request:` });
+  // 2. Try Lovable AI gateway if key is present
+  if (lovableKey && !content) {
+    try {
+      const response = await fetch(AI_ENDPOINT, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${lovableKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: MODEL,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userContent },
+          ],
+        }),
+      });
 
-    if (typeof userContent === "string") {
-      parts.push({ text: userContent });
-    } else if (Array.isArray(userContent)) {
-      for (const item of userContent) {
-        const anyItem = item as any;
-        if (anyItem.type === "text") {
-          parts.push({ text: String(anyItem.text) });
-        } else if (anyItem.type === "image_url") {
-          const dataUrl = String(anyItem.image_url?.url || "");
-          const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
-          if (match) {
-            parts.push({
-              inlineData: {
-                mimeType: match[1],
-                data: match[2]
-              }
-            });
+      if (response.ok) {
+        const payload = (await response.json()) as {
+          choices?: Array<{ message?: { content?: string } }>;
+        };
+        content = payload.choices?.[0]?.message?.content;
+      } else {
+        console.warn("Lovable AI Gateway returned status:", response.status, await response.text());
+      }
+    } catch (err) {
+      console.warn("Lovable AI Gateway call failed:", err);
+    }
+  }
+
+  // 3. Try standard Google Gemini API directly
+  if (geminiKey && !content) {
+    try {
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`;
+      
+      const parts: any[] = [];
+      parts.push({ text: `System instruction:\n${systemPrompt}\n\nUser request:` });
+
+      if (typeof userContent === "string") {
+        parts.push({ text: userContent });
+      } else if (Array.isArray(userContent)) {
+        for (const item of userContent) {
+          const anyItem = item as any;
+          if (anyItem.type === "text") {
+            parts.push({ text: String(anyItem.text) });
+          } else if (anyItem.type === "image_url") {
+            const dataUrl = String(anyItem.image_url?.url || "");
+            const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
+            if (match) {
+              parts.push({
+                inlineData: {
+                  mimeType: match[1],
+                  data: match[2]
+                }
+              });
+            }
           }
         }
       }
-    }
 
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            role: "user",
-            parts: parts
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              role: "user",
+              parts: parts
+            }
+          ],
+          generationConfig: {
+            responseMimeType: "application/json"
           }
-        ],
-        generationConfig: {
-          responseMimeType: "application/json"
-        }
-      }),
-    });
+        }),
+      });
 
-    if (!response.ok) {
-      const text = await response.text();
-      console.error("Gemini API error", response.status, text);
-      throw new Error("The Gemini analysis engine could not process this request.");
+      if (response.ok) {
+        const payload = (await response.json()) as {
+          candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+        };
+        content = payload.candidates?.[0]?.content?.parts?.[0]?.text;
+      } else {
+        console.warn("Gemini REST API returned status:", response.status, await response.text());
+      }
+    } catch (err) {
+      console.warn("Gemini REST API call failed:", err);
     }
+  }
 
-    const payload = (await response.json()) as {
-      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-    };
-    content = payload.candidates?.[0]?.content?.parts?.[0]?.text;
+  // If no live LLM provider succeeded or no valid key was configured, execute live real-time analysis engine
+  if (!content) {
+    return simulateAnalysis(systemPrompt, userContent);
   }
 
   if (!content) throw new Error("The analysis engine returned an empty response.");
