@@ -49,6 +49,8 @@ function RegisterPage() {
         const msg = error.message?.toLowerCase() || "";
         if (msg.includes("already registered") || msg.includes("user_already_exists")) {
           setAuthError("An account with this email already exists. Please sign in instead.");
+        } else if (msg.includes("password") && (msg.includes("short") || msg.includes("least"))) {
+          setAuthError("Password must be at least 6 characters long.");
         } else if (msg.includes("invalid api key")) {
           setAuthError("Authentication service connection error. Please try again in a few moments.");
         } else {
@@ -146,9 +148,10 @@ function RegisterPage() {
                     id="password"
                     type="password"
                     required
+                    minLength={6}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
+                    placeholder="•••••••• (min 6 chars)"
                     className="w-full rounded-xl border border-input bg-background/60 py-2.5 pl-10 pr-3 text-sm outline-none focus:border-primary"
                   />
                 </div>
