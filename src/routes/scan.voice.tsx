@@ -99,9 +99,14 @@ function VoiceScanner() {
     [audioUrl],
   );
 
+  const queryClient = useQueryClient();
   const mutation = useMutation({
     mutationFn: (vars: { audioBase64: string; fileName: string; type: string }) =>
       run({ data: vars }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["scan-history"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+    },
   });
 
   const handleRemove = () => {

@@ -36,9 +36,16 @@ export const Route = createFileRoute("/scan/url")({
 
 function UrlScanner() {
   const run = useServerFn(scanUrl);
+  const queryClient = useQueryClient();
   const [url, setUrl] = useState("");
 
-  const mutation = useMutation({ mutationFn: (u: string) => run({ data: { url: u } }) });
+  const mutation = useMutation({
+    mutationFn: (u: string) => run({ data: { url: u } }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["scan-history"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+    },
+  });
   const errorMessage =
     mutation.error instanceof Error
       ? mutation.error.message

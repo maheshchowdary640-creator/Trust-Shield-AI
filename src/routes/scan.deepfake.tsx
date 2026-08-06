@@ -103,9 +103,14 @@ function DeepfakeScanner() {
     [mediaUrl],
   );
 
+  const queryClient = useQueryClient();
   const mutation = useMutation({
     mutationFn: (vars: { mediaBase64: string; fileName: string; type: string }) =>
       run({ data: vars }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["scan-history"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+    },
   });
 
   const handleRemove = () => {

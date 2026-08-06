@@ -40,6 +40,7 @@ function JobOfferScanner() {
   const [recruiterEmail, setRecruiterEmail] = useState("");
   const [offerText, setOfferText] = useState("");
 
+  const queryClient = useQueryClient();
   const mutation = useMutation({
     mutationFn: (vars: {
       company?: string;
@@ -47,6 +48,10 @@ function JobOfferScanner() {
       recruiterEmail?: string;
       offerText: string;
     }) => run({ data: vars }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["scan-history"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+    },
   });
 
   const tooShort = offerText.trim().length < 30;

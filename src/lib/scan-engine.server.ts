@@ -47,12 +47,12 @@ async function getAuthenticatedUserId(): Promise<string> {
             return data.claims.sub;
           }
         } catch (e) {
-          console.warn("Failed to extract user claims, using local user ID instead", e);
+          console.warn("Failed to extract user claims", e);
         }
       }
     }
   }
-  return "local-user-id";
+  return "00000000-0000-0000-0000-000000000000";
 }
 
 async function persist(
@@ -78,6 +78,11 @@ async function persist(
     user_id: userId,
   };
 
+  // Always write to local JSON DB first for instant reliable availability
+  const localDb = readLocalDb();
+  localDb.unshift(newRecord);
+  writeLocalDb(localDb);
+
   const hasCreds = Boolean(process.env["SUPABASE_URL"] && process.env["SUPABASE_SERVICE_ROLE_KEY"]);
 
   if (hasCreds) {
@@ -91,17 +96,56 @@ async function persist(
       if (!error && data) {
         return data as unknown as ScanRecord;
       }
-      console.warn("Supabase insert error, falling back to local JSON storage", error);
+      console.warn("Supabase insert notice (local JSON saved):", error?.message || error);
     } catch (e) {
-      console.warn("Failed to insert scan in Supabase, falling back to local JSON storage", e);
+      console.warn("Supabase insert exception (local JSON saved):", e);
     }
   }
 
-  // Fallback to local DB
-  const localDb = readLocalDb();
-  localDb.unshift(newRecord);
-  writeLocalDb(localDb);
   return newRecord;
+}
+
+export async function fetchScans(): Promise<ScanRecord[]> {
+  const hasCreds = Boolean(process.env["SUPABASE_URL"] && process.env["SUPABASE_SERVICE_ROLE_KEY"]);
+  let supabaseScans: ScanRecord[] = [];
+
+  if (hasCreds) {
+    try {
+      const { data, error } = await supabaseAdmin
+        .from("scans")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(200);
+      
+      if (!error && data) {
+        supabaseScans = (data ?? []) as unknown as ScanRecord[];
+      }
+    } catch (e) {
+      console.warn("Supabase fetch failed, falling back to local JSON database", e);
+    }
+  }
+
+  const localDb = readLocalDb();
+
+  // Combine both sources and deduplicate by id
+  const map = new Map<string, ScanRecord>();
+  for (const s of localDb) {
+    map.set(s.id, s);
+  }
+  for (const s of supabaseScans) {
+    map.set(s.id, s);
+  }
+
+  const allScans = [...map.values()].sort(
+    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  );
+
+  return allScans;
+}
+
+export async function fetchScan(id: string): Promise<ScanRecord | null> {
+  const all = await fetchScans();
+  return all.find((s) => s.id === id) ?? null;
 }
 
 export async function analyzeScreenshot(input: {
@@ -298,56 +342,6 @@ ${JSON_CONTRACT}`,
         (f) => f.title.toLowerCase().includes("artifact") || f.title.toLowerCase().includes("ai"),
       )?.detail ?? "No typical GAN/Diffusion grid patterns detected.",
   });
-}
-
-export async function fetchScans(): Promise<ScanRecord[]> {
-  const userId = await getAuthenticatedUserId();
-  const hasCreds = Boolean(process.env["SUPABASE_URL"] && process.env["SUPABASE_SERVICE_ROLE_KEY"]);
-
-  if (hasCreds) {
-    try {
-      const { data, error } = await supabaseAdmin
-        .from("scans")
-        .select("*")
-        .eq("user_id" as any, userId)
-        .order("created_at", { ascending: false })
-        .limit(200);
-      
-      if (!error && data) {
-        return (data ?? []) as unknown as ScanRecord[];
-      }
-    } catch (e) {
-      console.warn("Supabase fetch failed, loading from local JSON database", e);
-    }
-  }
-
-  const localDb = readLocalDb();
-  return localDb.filter((s) => s.user_id === userId);
-}
-
-export async function fetchScan(id: string): Promise<ScanRecord | null> {
-  const userId = await getAuthenticatedUserId();
-  const hasCreds = Boolean(process.env["SUPABASE_URL"] && process.env["SUPABASE_SERVICE_ROLE_KEY"]);
-
-  if (hasCreds) {
-    try {
-      const { data, error } = await supabaseAdmin
-        .from("scans")
-        .select("*")
-        .eq("id", id)
-        .eq("user_id" as any, userId)
-        .maybeSingle();
-
-      if (!error && data) {
-        return data as unknown as ScanRecord | null;
-      }
-    } catch (e) {
-      console.warn("Supabase fetch single failed, loading from local JSON database", e);
-    }
-  }
-
-  const localDb = readLocalDb();
-  return localDb.find((s) => s.id === id && s.user_id === userId) ?? null;
 }
 
 export async function fetchStats() {

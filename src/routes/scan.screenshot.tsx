@@ -44,9 +44,14 @@ function ScreenshotScanner() {
   const [context, setContext] = useState("");
   const [fileError, setFileError] = useState<string | null>(null);
 
+  const queryClient = useQueryClient();
   const mutation = useMutation({
     mutationFn: (vars: { imageBase64: string; fileName: string; context?: string }) =>
       run({ data: vars }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["scan-history"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+    },
   });
 
   const accept = useCallback((f: File) => {
