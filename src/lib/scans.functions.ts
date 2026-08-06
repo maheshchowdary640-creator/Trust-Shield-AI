@@ -69,7 +69,7 @@ export const listScans = createServerFn({ method: "GET" }).handler(async () => {
 });
 
 export const getScan = createServerFn({ method: "GET" })
-  .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
+  .inputValidator((d: unknown) => z.object({ id: z.string().min(1).max(200) }).parse(d))
   .handler(async ({ data }: { data: any }) => {
     const { fetchScan } = await import("./scan-engine.server");
     return fetchScan(data.id);

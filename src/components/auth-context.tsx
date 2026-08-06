@@ -22,11 +22,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // 1. Get initial session
-    (supabase.auth as any).getSession().then(({ data: { session } }: any) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
+    (supabase.auth as any)
+      .getSession()
+      .then(({ data: { session } }: any) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        setLoading(false);
+      })
+      .catch((err: any) => {
+        console.warn("Auth getSession warning:", err);
+        setLoading(false);
+      });
 
     // 2. Listen for auth changes
     const {
