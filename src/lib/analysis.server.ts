@@ -75,7 +75,7 @@ function simulateAnalysis(systemPrompt: string, userContent: ChatContent): Analy
         { title: "Voice Pitch Variance / Synthetic Artifacts", detail: "Acoustic markers show synthetic voice generation or spoofed caller ID signature.", severity: "medium" }
       ]
     };
-  } else if (prompt.includes("biometric") || prompt.includes("deepfake analyst") || prompt.includes("face-swap")) {
+  } else if (prompt.includes("deepfake") || prompt.includes("biometric") || prompt.includes("face-swap") || prompt.includes("facial consistency")) {
     return {
       trust_score: 18,
       risk_level: "high",
@@ -125,12 +125,17 @@ function simulateAnalysis(systemPrompt: string, userContent: ChatContent): Analy
     const isKnownTrusted = [
       "google.com", "aistudio.google.com", "github.com", "microsoft.com", "apple.com", 
       "amazon.com", "paypal.com", "youtube.com", "wikipedia.org", "stackoverflow.com",
-      "openai.com", "linkedin.com", "twitter.com", "x.com", "gitlab.com"
+      "openai.com", "linkedin.com", "twitter.com", "x.com", "gitlab.com", "vercel.app",
+      "render.com", "netlify.app", "supabase.co"
     ].some(trusted => host === trusted || host.endsWith("." + trusted));
 
     const isSuspicious = [
-      "amaz0n", "paypaI", "login-security", "verify-account", "bank-update", 
-      "secure-auth", ".xyz", ".top", ".free", ".click", "000webhost"
+      "amaz0n", "paypaI", "login", "bank", "account", "verify", "secure", "update", 
+      "signin", "wallet", "token", "claim", "bonus", "gift", "support", "alert", 
+      "billing", "service", "free", "crypto", "binance", "coinbase", "meta-mask", 
+      "metamask", "g00gle", "mcrosoft", "app1e", ".xyz", ".top", ".tk", ".ml", 
+      ".ga", ".cf", ".gq", ".site", ".online", ".tech", ".club", ".work", 
+      ".click", ".link", ".info", ".icu", ".cam", ".live", "000webhost"
     ].some(bad => contentStr.includes(bad));
 
     if (isKnownTrusted && !isSuspicious) {
@@ -163,16 +168,15 @@ function simulateAnalysis(systemPrompt: string, userContent: ChatContent): Analy
       };
     } else {
       return {
-        trust_score: 85,
-        risk_level: "low",
-        verdict: "Standard Active Web Domain",
-        summary: `The domain "${host || "this link"}" is an active web domain with standard SSL encryption and no active security blacklists.`,
-        recommendation: "Proceed with standard browsing caution. Verify login credentials before submitting sensitive forms.",
-        threat_categories: ["Active Domain", "Standard SSL"],
+        trust_score: 38,
+        risk_level: "medium",
+        verdict: "Unverified External Domain Warning",
+        summary: `The domain "${host || "this link"}" is not listed on global corporate trust registries and exhibits unverified registrant identity patterns.`,
+        recommendation: "Exercise caution. Do not submit sensitive passwords, credit card numbers, or personal identity details on unverified domains.",
+        threat_categories: ["Unverified Domain", "External Link Risk"],
         findings: [
-          { title: "Active HTTP Connection", detail: "Domain responds cleanly with standard web server headers.", severity: "info" },
-          { title: "Standard SSL Encryption", detail: "Traffic is encrypted using standard TLS protocols.", severity: "info" },
-          { title: "No Immediate Blacklist Flags", detail: "Domain is not currently listed on major public threat feeds.", severity: "low" }
+          { title: "Unverified Registrant Record", detail: "Domain registrant identity is masked or not verified on top-tier corporate trust lists.", severity: "medium" },
+          { title: "Potential Redirection Target", detail: "Link targets an external domain outside established corporate infrastructure.", severity: "low" }
         ]
       };
     }
