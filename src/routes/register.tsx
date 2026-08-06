@@ -46,8 +46,11 @@ function RegisterPage() {
       });
 
       if (error) {
-        if (error.message?.toLowerCase().includes("invalid api key")) {
-          setAuthError("Registration error. Please check your email and password.");
+        const msg = error.message?.toLowerCase() || "";
+        if (msg.includes("already registered") || msg.includes("user_already_exists")) {
+          setAuthError("An account with this email already exists. Please sign in instead.");
+        } else if (msg.includes("invalid api key")) {
+          setAuthError("Authentication service connection error. Please try again in a few moments.");
         } else {
           setAuthError(error.message);
         }
