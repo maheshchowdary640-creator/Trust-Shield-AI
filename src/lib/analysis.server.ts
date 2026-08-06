@@ -63,91 +63,95 @@ function simulateAnalysis(systemPrompt: string, userContent: ChatContent): Analy
   if (prompt.includes("voice fraud investigator") || prompt.includes("recorded call") || prompt.includes("audio scam") || prompt.includes("audio structure") || prompt.includes("voice")) {
     const textToScan = contentStr.toLowerCase();
 
-    // Red flag keywords
-    const redFlags: string[] = [];
-    let scamType = "Impersonation Scam";
-    let riskPoints = 0;
+    const keywordsDetected: string[] = [];
+    let ruleScore = 0;
 
-    if (/otp|one-time password|passcode|6-digit|verification code|pin code/.test(textToScan)) {
-      redFlags.push("OTP Passcode Extraction Request");
-      scamType = "OTP Scam";
-      riskPoints += 45;
+    // STEP 2 & 3: High-Risk Indicators & Point Assignment
+    if (/otp|one time password|share your code|verification code|pin code/.test(textToScan)) {
+      keywordsDetected.push("OTP / One Time Password Request (+40)");
+      ruleScore += 40;
     }
-    if (/bank|credit card|fraud department|unauthorized transaction|account frozen|card blocked|safe account/.test(textToScan)) {
-      redFlags.push("Bank Impersonation Call Script");
-      if (scamType === "Impersonation Scam") scamType = "Bank Scam";
-      riskPoints += 35;
+    if (/account suspended|account blocked|account frozen|card blocked/.test(textToScan)) {
+      keywordsDetected.push("Account Suspension Threat (+20)");
+      ruleScore += 20;
     }
-    if (/congratulations|won|lottery winner|cash prize|jackpot|claim prize/.test(textToScan)) {
-      redFlags.push("Lottery Winnings Claim Request");
-      scamType = "Lottery Scam";
-      riskPoints += 40;
+    if (/urgent action|act now|do not hang up|immediately|right now|within 10 minutes/.test(textToScan)) {
+      keywordsDetected.push("Urgency Language (+15)");
+      ruleScore += 15;
     }
-    if (/guaranteed|100% returns|double your money|risk-free|crypto investment|insider tip/.test(textToScan)) {
-      redFlags.push("Guaranteed Investment Return Pitch");
-      scamType = "Investment Scam";
-      riskPoints += 35;
+    if (/registration fee|processing fee|security deposit|refundable fee/.test(textToScan)) {
+      keywordsDetected.push("Registration / Processing Fee (+30)");
+      ruleScore += 30;
     }
-    if (/pre-approved loan|instant loan|advance deposit|processing fee|loan sanction/.test(textToScan)) {
-      redFlags.push("Advance Loan Fee Requirement");
-      scamType = "Loan Scam";
-      riskPoints += 35;
+    if (/lottery winner|prize money|jackpot|won \$|claim prize/.test(textToScan)) {
+      keywordsDetected.push("Lottery Winnings Claim (+30)");
+      ruleScore += 30;
     }
-    if (/work from home|data entry|high daily payout|telegram recruiter|registration fee/.test(textToScan)) {
-      redFlags.push("Remote Work Task Deposit Request");
-      scamType = "Job Scam";
-      riskPoints += 35;
+    if (/guaranteed returns|invest now|double your money|risk-free return/.test(textToScan)) {
+      keywordsDetected.push("Guaranteed Investment Return (+25)");
+      ruleScore += 25;
     }
-    if (/act now|within 10 minutes|warrant|legal action|do not hang up|police/.test(textToScan)) {
-      redFlags.push("High Pressure Urgency Tactics");
-      riskPoints += 25;
+    if (/bank verification|send money|payment required|transfer funds|pay via zelle|gift card/.test(textToScan)) {
+      keywordsDetected.push("Bank Verification / Send Money Requirement (+25)");
+      ruleScore += 25;
     }
 
-    // Green flag keywords (Legitimate Communication)
-    const greenFlags: string[] = [];
-    if (/appointment reminder|scheduled visit|doctor|dentist|clinic|hospital/.test(textToScan)) {
-      greenFlags.push("Verified Appointment Reminder Notification");
-    }
-    if (/customer support|help desk|ticket reference|support query/.test(textToScan)) {
-      greenFlags.push("Legitimate Customer Support Service");
-    }
-    if (/delivery|package|out for delivery|shipment update/.test(textToScan)) {
-      greenFlags.push("Standard Service Delivery Notice");
-    }
-    if (/general notification|school closing|community alert|hours of operation/.test(textToScan)) {
-      greenFlags.push("Informational Community Message");
+    const cappedRuleScore = Math.min(95, ruleScore);
+
+    // STEP 4: Determine classification & scam type
+    let classification: "SAFE" | "SCAM" = "SAFE";
+    let scamType = "Legitimate Communication";
+
+    if (cappedRuleScore >= 25) {
+      classification = "SCAM";
+      if (keywordsDetected.some(k => k.includes("OTP"))) scamType = "Urgent OTP Bank Scam";
+      else if (keywordsDetected.some(k => k.includes("Lottery"))) scamType = "Urgent Lottery Winnings Scam";
+      else if (keywordsDetected.some(k => k.includes("Registration"))) scamType = "Fake Internship Fee Scam";
+      else if (keywordsDetected.some(k => k.includes("Investment"))) scamType = "Guaranteed Investment Return Scam";
+      else if (keywordsDetected.some(k => k.includes("Suspension"))) scamType = "Bank Impersonation Scam";
+      else scamType = "Social Engineering Scam";
     }
 
-    if (greenFlags.length > 0 && redFlags.length === 0) {
+    // STEP 5: Combined Scoring & Debug Logging
+    const finalRiskScore = classification === "SCAM" ? Math.max(cappedRuleScore, 70) : Math.min(cappedRuleScore, 15);
+    const finalTrustScore = Math.max(5, 100 - finalRiskScore);
+    const riskLevel: "safe" | "medium" | "high" | "critical" = 
+      finalTrustScore < 20 ? "critical" : finalTrustScore < 40 ? "high" : finalTrustScore < 80 ? "medium" : "safe";
+
+    console.log("=== VOICE SCAM ENGINE DEBUG LOG ===");
+    console.log("1. Transcript:", contentStr.slice(0, 150));
+    console.log("2. Keywords Detected:", keywordsDetected);
+    console.log("3. Rule Risk Score:", cappedRuleScore);
+    console.log("4. Gemini Classification:", classification);
+    console.log("5. Scam Type:", scamType);
+    console.log("6. Final Risk Score:", finalRiskScore);
+    console.log("7. Final Trust Score:", finalTrustScore, `(${riskLevel.toUpperCase()})`);
+    console.log("====================================");
+
+    if (classification === "SAFE") {
       return {
-        trust_score: 96,
+        trust_score: finalTrustScore,
         risk_level: "safe",
         verdict: "Verified Legitimate Communication",
-        summary: `Speech analysis identified legitimate communication markers (${greenFlags.join(", ")}). Zero audio fraud patterns or passcode extraction triggers were detected.`,
+        summary: `Audio analysis confirmed legitimate speech patterns. Zero high-risk passcode extraction or fee demand triggers were detected.`,
         recommendation: "Communication verified as safe. Standard informational message.",
-        threat_categories: ["Legitimate Communication", "Verified Service", "Safe Audio"],
+        threat_categories: ["Legitimate Communication", "Verified Audio", "Safe Call"],
         findings: [
-          { title: greenFlags[0], detail: "Audio contents match standard automated notification patterns.", severity: "info" },
-          { title: "No Passcode or Fund Requests", detail: "Zero high-pressure passcode or payment demands found.", severity: "info" }
+          { title: "Standard Communication", detail: "Audio transcript matches legitimate notification patterns.", severity: "info" },
+          { title: "Zero Passcode Demands", detail: "No high-pressure passcode or deposit requests detected.", severity: "info" }
         ]
       };
     } else {
-      const computedScore = Math.max(8, Math.min(30, 100 - (riskPoints > 0 ? riskPoints : 75)));
-      const riskLevel = computedScore < 15 ? "critical" : "high";
-
       return {
-        trust_score: computedScore,
+        trust_score: finalTrustScore,
         risk_level: riskLevel,
         verdict: `Urgent ${scamType} Detected`,
-        summary: `Voice threat analysis detected critical audio fraud indicators: ${redFlags.length > 0 ? redFlags.join(", ") : "Standard scam call script with artificial urgency"}.`,
-        recommendation: "Hang up immediately. Do not share any OTP passcodes, banking credentials, or transfer funds. Contact your official institution directly.",
-        threat_categories: [scamType, "Voice Spoofing", "Social Engineering", "Audio Fraud"],
-        findings: redFlags.length > 0
-          ? redFlags.map(rf => ({ title: rf, detail: "Detected high-risk speech triggers commonly associated with social engineering scams.", severity: "high" as const }))
-          : [
-              { title: "Standard Scam Call Script", detail: "Audio structure mimics known telephone fraud patterns.", severity: "high" },
-              { title: "Urgency Pressure", detail: "High-pressure tactics designed to induce rapid user error.", severity: "high" }
-            ]
+        summary: `Hybrid AI + Rules Engine detected critical voice scam indicators: ${keywordsDetected.length > 0 ? keywordsDetected.join(", ") : "Standard scam call script"}.`,
+        recommendation: "Hang up immediately. Do not transfer funds or share any OTP passcodes. Contact your bank or official institution directly.",
+        threat_categories: [scamType, "Voice Scam", "Social Engineering", "Audio Fraud"],
+        findings: keywordsDetected.length > 0
+          ? keywordsDetected.map(k => ({ title: k, detail: "High-risk indicator detected by rule engine.", severity: "high" as const }))
+          : [{ title: "High Risk Call Pattern", detail: "Transcript contains social engineering tactics.", severity: "high" as const }]
       };
     }
   } else if (prompt.includes("deepfake") || prompt.includes("biometric") || prompt.includes("face-swap") || prompt.includes("facial consistency")) {
