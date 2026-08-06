@@ -68,6 +68,36 @@ function RegisterPage() {
     }
   };
 
+  const handleDemoLogin = async () => {
+    setAuthError(null);
+    setSubmitting(true);
+    const demoEmail = "demo.user@trustshield.ai";
+    const demoPass = "TrustShield2026!";
+
+    try {
+      const { data: signInData, error: signInError } = await (supabase.auth as any).signInWithPassword({
+        email: demoEmail,
+        password: demoPass,
+      });
+
+      if (signInError || !signInData?.session) {
+        await (supabase.auth as any).signUp({
+          email: demoEmail,
+          password: demoPass,
+        });
+        await (supabase.auth as any).signInWithPassword({
+          email: demoEmail,
+          password: demoPass,
+        });
+      }
+      router.navigate({ to: "/dashboard" });
+    } catch {
+      router.navigate({ to: "/dashboard" });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   if (loading) {
     return null;
   }
@@ -96,6 +126,22 @@ function RegisterPage() {
           {authError && (
             <div className="mb-4">
               <ErrorPanel message={authError} />
+            </div>
+          )}
+
+          {!success && (
+            <div className="mb-6">
+              <button
+                type="button"
+                onClick={handleDemoLogin}
+                disabled={submitting}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-primary/40 bg-primary/10 py-2.5 text-xs font-semibold text-primary transition-all hover:bg-primary/20 hover:scale-[1.01]"
+              >
+                ⚡ Instant Demo Sign-In (1-Click Access)
+              </button>
+              <div className="relative my-4 text-center text-xs text-muted-foreground">
+                <span className="bg-card px-2 text-[10px] uppercase tracking-widest">or create account with email</span>
+              </div>
             </div>
           )}
 
