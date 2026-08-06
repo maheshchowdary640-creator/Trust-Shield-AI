@@ -41,16 +41,7 @@ function LoginPage() {
       });
 
       if (error) {
-        const msg = error.message?.toLowerCase() || "";
-        if (msg.includes("invalid login credentials") || msg.includes("invalid_credentials")) {
-          setAuthError("Invalid email or password. Please check your credentials and try again.");
-        } else if (msg.includes("email not confirmed")) {
-          setAuthError("Your email has not been confirmed yet. Please check your email inbox.");
-        } else if (msg.includes("invalid api key")) {
-          setAuthError("Authentication service connection error. Please try again in a few moments.");
-        } else {
-          setAuthError(error.message);
-        }
+        setAuthError(error.message || "Sign in failed. Please check your credentials.");
       } else {
         router.navigate({ to: "/dashboard" });
       }
