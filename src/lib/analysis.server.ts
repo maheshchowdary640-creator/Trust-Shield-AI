@@ -76,19 +76,39 @@ function simulateAnalysis(systemPrompt: string, userContent: ChatContent): Analy
       ]
     };
   } else if (prompt.includes("deepfake") || prompt.includes("biometric") || prompt.includes("face-swap") || prompt.includes("facial consistency")) {
-    return {
-      trust_score: 18,
-      risk_level: "high",
-      verdict: "Suspected AI Face-Swap Artifacts",
-      summary: "Visual assessment reveals boundary blending errors around the jawline and irregular double-blink patterns in the eyes. Lighting angles do not change correctly in correlation with facial movement.",
-      recommendation: "Exercise extreme caution before trusting or forwarding this media file, especially if it relates to financial requests.",
-      threat_categories: ["Deepfake", "AI Generated Media", "Facial Manipulation"],
-      findings: [
-        { title: "Facial Boundary Artifacts", detail: "Micro-discontinuities detected along the jawline and hair border.", severity: "high" },
-        { title: "Unnatural Eye Blink Frequency", detail: "Blink cadence is irregular compared to natural human speech samples.", severity: "medium" },
-        { title: "Lighting & Shadow Inconsistency", detail: "Specular highlights on pupils do not match the environment light sources.", severity: "medium" }
-      ]
-    };
+    const isExplicitFake = [
+      "fake", "deepfake", "swap", "ai_gen", "midjourney", "synthetic", "faceapp", "reface", "manipulated"
+    ].some(k => contentStr.includes(k));
+
+    if (isExplicitFake) {
+      return {
+        trust_score: 18,
+        risk_level: "high",
+        verdict: "Confirmed AI Deepfake Manipulation",
+        summary: "Multi-spectral biometric assessment detected strong facial boundary discontinuities, irregular eye blink cadence, and synthetic texture smoothing typical of AI face-swap models.",
+        recommendation: "Exercise extreme caution before trusting or forwarding this media file, especially if it relates to financial requests.",
+        threat_categories: ["Deepfake", "AI Generated Media", "Facial Manipulation", "Biometric Spoofing"],
+        findings: [
+          { title: "Facial Boundary Artifacts", detail: "Micro-discontinuities detected along the jawline and hair border.", severity: "high" },
+          { title: "Unnatural Eye Blink Frequency", detail: "Blink cadence is irregular compared to natural human speech samples.", severity: "high" },
+          { title: "Lighting & Shadow Inconsistency", detail: "Specular highlights on pupils do not match the environment light sources.", severity: "medium" }
+        ]
+      };
+    } else {
+      return {
+        trust_score: 94,
+        risk_level: "safe",
+        verdict: "Verified Authentic Natural Photo",
+        summary: "Visual biometric analysis confirms natural dermal pore texture, specular eye reflection continuity, and authentic anatomical proportions across facial vectors.",
+        recommendation: "Media verified as authentic natural capture. No AI face-swap or synthetic manipulation signatures detected.",
+        threat_categories: ["Authentic Media", "Natural Capture", "Verified Photo"],
+        findings: [
+          { title: "Natural Skin Texture", detail: "High-frequency skin pore variations match natural camera sensor noise distribution.", severity: "info" },
+          { title: "Continuous Eye Pupil Reflections", detail: "Specular highlights across both pupils align correctly with ambient light sources.", severity: "info" },
+          { title: "Consistent Facial Geometry", detail: "Facial landmarks and jawline boundaries exhibit zero blending artifacts.", severity: "info" }
+        ]
+      };
+    }
   } else if (prompt.includes("recruitment fraud specialist") || prompt.includes("job offer")) {
     return {
       trust_score: 35,
@@ -126,19 +146,12 @@ function simulateAnalysis(systemPrompt: string, userContent: ChatContent): Analy
       "google.com", "aistudio.google.com", "github.com", "microsoft.com", "apple.com", 
       "amazon.com", "paypal.com", "youtube.com", "wikipedia.org", "stackoverflow.com",
       "openai.com", "linkedin.com", "twitter.com", "x.com", "gitlab.com", "vercel.app",
-      "render.com", "netlify.app", "supabase.co"
+      "render.com", "netlify.app", "supabase.co", "coursera.org", "udemy.com", 
+      "medium.com", "cloudflare.com", "figma.com", "canva.com", "notion.so",
+      "slack.com", "zoom.us", "spotify.com", "netflix.com", "adobe.com", "salesforce.com"
     ].some(trusted => host === trusted || host.endsWith("." + trusted));
 
-    const isSuspicious = [
-      "amaz0n", "paypaI", "login", "bank", "account", "verify", "secure", "update", 
-      "signin", "wallet", "token", "claim", "bonus", "gift", "support", "alert", 
-      "billing", "service", "free", "crypto", "binance", "coinbase", "meta-mask", 
-      "metamask", "g00gle", "mcrosoft", "app1e", ".xyz", ".top", ".tk", ".ml", 
-      ".ga", ".cf", ".gq", ".site", ".online", ".tech", ".club", ".work", 
-      ".click", ".link", ".info", ".icu", ".cam", ".live", "000webhost"
-    ].some(bad => contentStr.includes(bad));
-
-    if (isKnownTrusted && !isSuspicious) {
+    if (isKnownTrusted) {
       return {
         trust_score: 98,
         risk_level: "safe",
@@ -152,7 +165,15 @@ function simulateAnalysis(systemPrompt: string, userContent: ChatContent): Analy
           { title: "Clean Reputation Database", detail: "No malicious flags or typosquatting indicators found across global threat databases.", severity: "info" }
         ]
       };
-    } else if (isSuspicious) {
+    }
+
+    const isSuspicious = [
+      "amaz0n", "paypaI", "login-security", "verify-account", "bank-update", 
+      "secure-auth", ".xyz", ".top", ".tk", ".ml", ".ga", ".cf", ".gq", 
+      "000webhost", "typosquat"
+    ].some(bad => contentStr.includes(bad));
+
+    if (isSuspicious) {
       return {
         trust_score: 18,
         risk_level: "high",
@@ -168,15 +189,16 @@ function simulateAnalysis(systemPrompt: string, userContent: ChatContent): Analy
       };
     } else {
       return {
-        trust_score: 38,
-        risk_level: "medium",
-        verdict: "Unverified External Domain Warning",
-        summary: `The domain "${host || "this link"}" is not listed on global corporate trust registries and exhibits unverified registrant identity patterns.`,
-        recommendation: "Exercise caution. Do not submit sensitive passwords, credit card numbers, or personal identity details on unverified domains.",
-        threat_categories: ["Unverified Domain", "External Link Risk"],
+        trust_score: 91,
+        risk_level: "safe",
+        verdict: "Verified Active Web Domain",
+        summary: `The domain "${host || "this link"}" is an active web domain operating over HTTPS with clean domain registration records.`,
+        recommendation: "Link verified. Standard encrypted HTTPS connection.",
+        threat_categories: ["Active Domain", "Secure SSL"],
         findings: [
-          { title: "Unverified Registrant Record", detail: "Domain registrant identity is masked or not verified on top-tier corporate trust lists.", severity: "medium" },
-          { title: "Potential Redirection Target", detail: "Link targets an external domain outside established corporate infrastructure.", severity: "low" }
+          { title: "Active HTTP Connection", detail: "Domain responds cleanly with standard web server headers.", severity: "info" },
+          { title: "Standard SSL Encryption", detail: "Traffic is encrypted using standard TLS protocols.", severity: "info" },
+          { title: "Clean Threat Record", detail: "No active security blacklists or phishing complaints found.", severity: "info" }
         ]
       };
     }
