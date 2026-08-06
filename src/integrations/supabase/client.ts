@@ -30,29 +30,13 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
 }
 
 function createSupabaseClient() {
-  const DEFAULT_URL = "https://slskxkxsfavjtbfzgewn.supabase.co";
-  const DEFAULT_KEY =
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNsc2t4a3hzZmF2anRiZnpnZXduIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU5MTQxMTAsImV4cCI6MjEwMTQ5MDExMH0.hj8anD5rFNXAvsAVjXOeWFDhPZkDM6cfHQWtrPbtJ_s";
-
-  let rawUrl =
-    import.meta.env["VITE_SUPABASE_URL"] ||
+  const SUPABASE_URL =
+    (import.meta.env["VITE_SUPABASE_URL"] ||
     process.env["SUPABASE_URL"] ||
-    DEFAULT_URL;
+    "https://slskxkxsfavjtbfzgewn.supabase.co").trim().replace(/["']/g, "");
 
-  let rawKey =
-    import.meta.env["VITE_SUPABASE_PUBLISHABLE_KEY"] ||
-    import.meta.env["VITE_SUPABASE_ANON_KEY"] ||
-    process.env["SUPABASE_PUBLISHABLE_KEY"] ||
-    process.env["SUPABASE_ANON_KEY"] ||
-    DEFAULT_KEY;
-
-  // Sanitize key string
-  rawUrl = String(rawUrl).trim().replace(/["']/g, "");
-  rawKey = String(rawKey).trim().replace(/["']/g, "");
-
-  // Use DEFAULT_KEY if rawKey is invalid or empty
-  const SUPABASE_URL = rawUrl.startsWith("http") ? rawUrl : DEFAULT_URL;
-  const SUPABASE_PUBLISHABLE_KEY = rawKey.length > 50 ? rawKey : DEFAULT_KEY;
+  const SUPABASE_PUBLISHABLE_KEY =
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNsc2t4a3hzZmF2anRiZnpnZXduIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU5MTQxMTAsImV4cCI6MjEwMTQ5MDExMH0.hj8anD5rFNXAvsAVjXOeWFDhPZkDM6cfHQWtrPbtJ_s";
 
   const isBrowser = typeof window !== "undefined";
 
