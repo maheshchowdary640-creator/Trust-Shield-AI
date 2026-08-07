@@ -83,46 +83,43 @@ async function persist(
   localDb.unshift(newRecord);
   writeLocalDb(localDb);
 
-  const hasCreds = Boolean(process.env["SUPABASE_URL"] && process.env["SUPABASE_SERVICE_ROLE_KEY"]);
+  // Always insert into Supabase PostgreSQL DB for real-time live synchronization
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("scans")
+      .insert(newRecord as any)
+      .select()
+      .single();
 
-  if (hasCreds) {
-    try {
-      const { data, error } = await supabaseAdmin
-        .from("scans")
-        .insert(newRecord as any)
-        .select()
-        .single();
-
-      if (!error && data) {
-        return data as unknown as ScanRecord;
-      }
-      console.warn("Supabase insert notice (local JSON saved):", error?.message || error);
-    } catch (e) {
-      console.warn("Supabase insert exception (local JSON saved):", e);
+    if (!error && data) {
+      console.log("[SUPABASE DB INSERT SUCCESS] Scan persisted with ID:", data.id);
+      return data as unknown as ScanRecord;
     }
+    console.warn("[SUPABASE DB INSERT NOTICE] (local DB saved):", error?.message || error);
+  } catch (e) {
+    console.warn("[SUPABASE DB INSERT EXCEPTION] (local DB saved):", e);
   }
 
   return newRecord;
 }
 
 export async function fetchScans(): Promise<ScanRecord[]> {
-  const hasCreds = Boolean(process.env["SUPABASE_URL"] && process.env["SUPABASE_SERVICE_ROLE_KEY"]);
   let supabaseScans: ScanRecord[] = [];
 
-  if (hasCreds) {
-    try {
-      const { data, error } = await supabaseAdmin
-        .from("scans")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(200);
-      
-      if (!error && data) {
-        supabaseScans = (data ?? []) as unknown as ScanRecord[];
-      }
-    } catch (e) {
-      console.warn("Supabase fetch failed, falling back to local JSON database", e);
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("scans")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(200);
+
+    if (!error && data) {
+      supabaseScans = data as unknown as ScanRecord[];
+    } else {
+      console.warn("[SUPABASE DB FETCH NOTICE] (falling back to local DB):", error?.message || error);
     }
+  } catch (e) {
+    console.warn("[SUPABASE DB FETCH EXCEPTION] (falling back to local DB):", e);
   }
 
   const localDb = readLocalDb();
