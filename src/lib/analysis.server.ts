@@ -418,6 +418,7 @@ export async function callAnalysisModel(
 
     for (const modelName of modelsToTry) {
       if (content) break;
+      console.log(`[LIVE GEMINI MODEL] ${modelName}`);
       try {
         const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${geminiKey}`;
         const response = await fetch(endpoint, {
@@ -444,19 +445,20 @@ export async function callAnalysisModel(
           };
           content = payload.candidates?.[0]?.content?.parts?.[0]?.text;
           if (content) {
-            console.log(`==========================================`);
-            console.log(`[LIVE GEMINI MODEL SUCCESS] Model: ${modelName}`);
+            console.log(`[LIVE GEMINI MODEL SUCCESS] ${modelName}`);
             console.log(`[LIVE GEMINI RAW RESPONSE]:\n${content.slice(0, 400)}`);
-            console.log(`==========================================`);
+          } else {
+            lastError = `Model ${modelName} returned empty text candidate`;
+            console.warn(`[LIVE GEMINI MODEL FAILED] ${modelName} - Empty text`);
           }
         } else {
           const errBody = await response.text();
           lastError = `Status ${response.status}: ${errBody}`;
-          console.warn(`[GEMINI MODEL ${modelName} WARNING] ${lastError}`);
+          console.warn(`[LIVE GEMINI MODEL FAILED] ${modelName} - ${lastError}`);
         }
       } catch (err) {
         lastError = err instanceof Error ? err.message : String(err);
-        console.warn(`[GEMINI MODEL ${modelName} EXCEPTION]:`, err);
+        console.warn(`[LIVE GEMINI MODEL FAILED] ${modelName} - Exception: ${lastError}`);
       }
     }
   }
