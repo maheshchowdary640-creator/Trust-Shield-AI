@@ -370,76 +370,20 @@ function simulateAnalysis(systemPrompt: string, userContent: ChatContent): Analy
 
 export async function callAnalysisModel(
   systemPrompt: string,
-  userContent: ChatContent,
+  userContent: ChatContent
 ): Promise<AnalysisResult> {
-  const lovableKey = process.env["LOVABLE_API_KEY"];
-  const geminiKey = process.env["GEMINI_API_KEY"] || process.env["VITE_GEMINI_API_KEY"] || process.env["GOOGLE_API_KEY"];
-  const openaiKey = process.env["OPENAI_API_KEY"];
+  const geminiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
+  const openAiKey = process.env.OPENAI_API_KEY;
+  const lovableKey = process.env.LOVABLE_AI_KEY || process.env.VITE_LOVABLE_AI_KEY;
+
+  if (!geminiKey && !openAiKey && !lovableKey) {
+    throw new Error("Gemini API key missing. AI analysis unavailable.");
+  }
 
   let content: string | undefined;
+  let lastError: string = "";
 
-  // 1. Try OpenAI API if key is present
-  if (openaiKey && !content) {
-    try {
-      const response = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${openaiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          response_format: { type: "json_object" },
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userContent },
-          ],
-        }),
-      });
-
-      if (response.ok) {
-        const payload = (await response.json()) as any;
-        content = payload.choices?.[0]?.message?.content;
-      } else {
-        console.warn("OpenAI API returned status:", response.status, await response.text());
-      }
-    } catch (err) {
-      console.warn("OpenAI API call failed:", err);
-    }
-  }
-
-  // 2. Try Lovable AI gateway if key is present
-  if (lovableKey && !content) {
-    try {
-      const response = await fetch(AI_ENDPOINT, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${lovableKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: MODEL,
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userContent },
-          ],
-        }),
-      });
-
-      if (response.ok) {
-        const payload = (await response.json()) as {
-          choices?: Array<{ message?: { content?: string } }>;
-        };
-        content = payload.choices?.[0]?.message?.content;
-      } else {
-        console.warn("Lovable AI Gateway returned status:", response.status, await response.text());
-      }
-    } catch (err) {
-      console.warn("Lovable AI Gateway call failed:", err);
-    }
-  }
-
-  // 3. Try standard Google Gemini API directly
+  // 1. Try standard Google Gemini API directly (Primary Provider)
   if (geminiKey && !content) {
     const modelsToTry = [
       "gemini-1.5-flash",
@@ -507,21 +451,44 @@ export async function callAnalysisModel(
           }
         } else {
           const errBody = await response.text();
-          console.warn(`[GEMINI MODEL ${modelName} WARNING] Status: ${response.status} - ${errBody}`);
+          lastError = `Status ${response.status}: ${errBody}`;
+          console.warn(`[GEMINI MODEL ${modelName} WARNING] ${lastError}`);
         }
       } catch (err) {
+        lastError = err instanceof Error ? err.message : String(err);
         console.warn(`[GEMINI MODEL ${modelName} EXCEPTION]:`, err);
       }
     }
   }
 
-  // If no live LLM provider succeeded or no valid key was configured, execute live real-time analysis engine
+  // 2. Try OpenAI API fallback if present
+  if (openAiKey && !content) {
+    try {
+      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${openAiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userContent },
+          ],
+        }),
+      });
+
+      if (response.ok) {
+        const payload = (await response.json()) as any;
+        content = payload.choices?.[0]?.message?.content;
+      }
+    } catch {}
+  }
+
+  // 3. Fail explicitly if no live LLM model returned a response
   if (!content) {
-    console.log("==========================================");
-    console.log("[REAL AI INTELLIGENCE ENGINE EXECUTED]");
-    console.log("Executing high-fidelity semantic intent and biometric feature analysis...");
-    console.log("==========================================");
-    return simulateAnalysis(systemPrompt, userContent);
+    throw new Error(`Gemini API call failed: ${lastError || "No response received from Gemini models."}`);
   }
 
   console.log("==========================================");
@@ -533,8 +500,7 @@ export async function callAnalysisModel(
   try {
     parsed = extractJson(content) as Partial<AnalysisResult>;
   } catch (err) {
-    console.warn("AI JSON parsing failed, using simulated analysis fallback", err);
-    return simulateAnalysis(systemPrompt, userContent);
+    throw new Error(`Gemini response JSON parsing failed: ${err instanceof Error ? err.message : String(err)}`);
   }
 
   const score = Math.max(0, Math.min(100, Math.round(Number(parsed.trust_score ?? 0))));
