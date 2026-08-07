@@ -313,9 +313,22 @@ File Name: ${input.fileName}
 Speech Transcript: "${rawTranscript}"`;
 
   const analysis = await callAnalysisModel(
-    `You are TrustShield AI, a voice fraud investigator.
-Analyze a recording/voice message transcript. Evaluate if it contains speech patterns of common audio scams.
-Classify into one of these threat types: OTP & Credential Theft Scam, Bank Verification Scam, Account Suspension Impersonation Scam, Lottery Winnings Fee Scam, Guaranteed Investment Fraud, Fake Internship Fee Scam, Legitimate Communication.
+    `You are TrustShield AI, an expert voice fraud investigator and forensic speech analyst.
+Analyze the audio recording and speech transcript for voice scam indicators.
+
+CRITICAL SCORING MANDATES:
+1. BENIGN / LEGITIMATE CALLS (Dental appointment reminders, doctor reminders, package delivery updates, routine corporate notices):
+   - MUST assign trust_score between 95 and 100.
+   - MUST assign risk_level: "safe".
+   - MUST assign verdict: "Verified Legitimate Communication".
+   - DO NOT flag routine reminders as scams.
+
+2. HIGH-RISK / SCAM CALLS (OTP requests, passcode extraction, bank suspension threats, urgent wire transfers, lottery fee demands):
+   - MUST assign trust_score between 0 and 15.
+   - MUST assign risk_level: "critical" or "high".
+   - MUST assign verdict detailing the exact threat (e.g. "CRITICAL: OTP & Credential Theft Scam").
+
+Classification options: OTP & Credential Theft Scam, Bank Verification Scam, Account Suspension Impersonation Scam, Lottery Winnings Fee Scam, Guaranteed Investment Fraud, Fake Internship Fee Scam, Legitimate Communication.
 ${JSON_CONTRACT}`,
     userContentPayload,
   );
