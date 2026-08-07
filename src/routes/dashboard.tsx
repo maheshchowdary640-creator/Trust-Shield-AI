@@ -122,18 +122,47 @@ function Dashboard() {
         .channel("realtime-dashboard-scans")
         .on(
           "postgres_changes",
-          { event: "*", schema: "public", table: "scans" },
-          () => {
+          { event: "INSERT", schema: "public", table: "scans" },
+          (payload) => {
+            console.log("[SUPABASE REALTIME] INSERT event received for scans:", payload.new);
             queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+            queryClient.refetchQueries({ queryKey: ["dashboard-stats"] });
             queryClient.invalidateQueries({ queryKey: ["scan-history"] });
           }
         )
-        .subscribe();
+        .on(
+          "postgres_changes",
+          { event: "UPDATE", schema: "public", table: "scans" },
+          (payload) => {
+            console.log("[SUPABASE REALTIME] UPDATE event received for scans:", payload.new);
+            queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+            queryClient.refetchQueries({ queryKey: ["dashboard-stats"] });
+            queryClient.invalidateQueries({ queryKey: ["scan-history"] });
+          }
+        )
+        .on(
+          "postgres_changes",
+          { event: "DELETE", schema: "public", table: "scans" },
+          (payload) => {
+            console.log("[SUPABASE REALTIME] DELETE event received for scans:", payload.old);
+            queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+            queryClient.refetchQueries({ queryKey: ["dashboard-stats"] });
+            queryClient.invalidateQueries({ queryKey: ["scan-history"] });
+          }
+        )
+        .subscribe((status, err) => {
+          console.log(`[SUPABASE REALTIME CHANNEL STATUS]: ${status}`);
+          if (err) {
+            console.warn("[SUPABASE REALTIME CHANNEL ERROR]:", err);
+          }
+        });
 
       return () => {
         supabase.removeChannel(channel);
       };
-    } catch {}
+    } catch (err) {
+      console.warn("[SUPABASE REALTIME SETUP EXCEPTION]:", err);
+    }
   }, [queryClient]);
 
   const cards = [
