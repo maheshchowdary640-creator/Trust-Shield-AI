@@ -386,9 +386,9 @@ export async function callAnalysisModel(
   // 1. Try standard Google Gemini API directly (Primary Provider)
   if (geminiKey && !content) {
     const modelsToTry = [
+      "gemini-2.5-flash",
+      "gemini-2.0-flash",
       "gemini-1.5-flash",
-      "gemini-2.0-flash-exp",
-      "gemini-1.5-pro",
     ];
 
     const parts: any[] = [];
