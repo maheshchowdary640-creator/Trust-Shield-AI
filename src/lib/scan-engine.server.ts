@@ -301,10 +301,14 @@ export async function analyzeVoice(input: {
     ? [
         {
           type: "text",
-          text: `Transcribe and analyze this audio recording for voice scam indicators.
+          text: `AUDIO PIPELINE MANDATE:
+1. Listen to the attached audio file payload and transcribe the spoken speech word-for-word.
+2. Include the transcribed speech explicitly in your summary or findings.
+3. Analyze the spoken text for scam indicators (OTP demands, account suspension threats, bank impersonation).
+
 File Name: ${input.fileName}
 Mime Type: ${input.type}
-Speech Transcript: "${rawTranscript}"`,
+Uploaded Transcript Context: "${hasTextTranscript ? input.transcript : "Audio file uploaded — perform speech-to-text transcription"}"`,
         },
         { type: "audio_url", audio_url: { url: input.audioBase64 } },
       ]
