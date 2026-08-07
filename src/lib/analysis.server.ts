@@ -368,6 +368,15 @@ function simulateAnalysis(systemPrompt: string, userContent: ChatContent): Analy
   };
 }
 
+export const GEMINI_API_VERSION = "v1beta";
+export const GEMINI_MODELS = [
+  "gemini-2.5-flash",
+  "gemini-2.0-flash",
+  "gemini-1.5-flash",
+] as const;
+export const ACTIVE_GEMINI_MODEL = GEMINI_MODELS[0];
+export const AVAILABLE_FAILOVER_MODELS = GEMINI_MODELS.slice(1);
+
 export async function callAnalysisModel(
   systemPrompt: string,
   userContent: ChatContent
@@ -385,11 +394,11 @@ export async function callAnalysisModel(
 
   // 1. Try standard Google Gemini API directly (Primary Provider)
   if (geminiKey && !content) {
-    const modelsToTry = [
-      "gemini-2.5-flash",
-      "gemini-2.0-flash",
-      "gemini-1.5-flash",
-    ];
+    console.log("==========================================");
+    console.log(`[ACTIVE GEMINI MODEL] ${ACTIVE_GEMINI_MODEL}`);
+    console.log(`[AVAILABLE FAILOVER MODELS] ${AVAILABLE_FAILOVER_MODELS.join(", ")}`);
+    console.log(`[GEMINI API VERSION] ${GEMINI_API_VERSION}`);
+    console.log("==========================================");
 
     const parts: any[] = [];
     parts.push({ text: `System instruction:\n${systemPrompt}\n\nUser request:` });
@@ -416,7 +425,7 @@ export async function callAnalysisModel(
       }
     }
 
-    for (const modelName of modelsToTry) {
+    for (const modelName of GEMINI_MODELS) {
       if (content) break;
       console.log(`[LIVE GEMINI MODEL] ${modelName}`);
       try {
