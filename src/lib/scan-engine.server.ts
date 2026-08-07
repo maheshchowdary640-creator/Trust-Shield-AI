@@ -415,8 +415,10 @@ ${JSON_CONTRACT}`,
 export async function fetchStats() {
   const scans = await fetchScans();
   const total = scans.length;
-  const threats = scans.filter((s) => ["high", "critical"].includes(s.risk_level)).length;
   const safe = scans.filter((s) => ["safe", "low"].includes(s.risk_level)).length;
+  const suspicious = scans.filter((s) => s.risk_level === "medium").length;
+  const highRisk = scans.filter((s) => ["high", "critical"].includes(s.risk_level)).length;
+  const threats = highRisk;
   const avgScore = total ? Math.round(scans.reduce((a, s) => a + s.trust_score, 0) / total) : 0;
 
   const categoryCounts = new Map<string, number>();
@@ -452,14 +454,19 @@ export async function fetchStats() {
     });
   }
 
+  // Sort newest first for Recent Activity
+  const sortedScans = [...scans].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
   return {
     total,
-    threats,
     safe,
+    suspicious,
+    highRisk,
+    threats,
     avgScore,
     categories,
     byType,
     timeline: days,
-    recent: scans.slice(0, 6),
+    recent: sortedScans.slice(0, 10),
   };
 }

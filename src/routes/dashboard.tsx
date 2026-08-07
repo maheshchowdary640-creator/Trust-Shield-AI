@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   Bar,
@@ -32,6 +33,7 @@ import { ErrorPanel, GlassCard, RiskBadge } from "@/components/security-ui";
 import { getDashboardStats } from "@/lib/scans.functions";
 import { SCAN_TYPE_LABELS } from "@/lib/scan-types";
 import { AuthGuard } from "@/components/auth-guard";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
@@ -106,26 +108,39 @@ const SCAN_MODULES = [
 
 function Dashboard() {
   const fetchStats = useServerFn(getDashboardStats);
+  const queryClient = useQueryClient();
+
   const { data, isLoading, error } = useQuery({
     queryKey: ["dashboard-stats"],
     queryFn: () => fetchStats(),
-    refetchInterval: 30_000,
+    refetchInterval: 2_000,
   });
+
+  useEffect(() => {
+    try {
+      const channel = supabase
+        .channel("realtime-dashboard-scans")
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "scans" },
+          () => {
+            queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+            queryClient.invalidateQueries({ queryKey: ["scan-history"] });
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    } catch {}
+  }, [queryClient]);
 
   const cards = [
     { label: "Total scans", value: data?.total ?? 0, icon: Activity, tone: "text-primary" },
-    {
-      label: "Threats detected",
-      value: data?.threats ?? 0,
-      icon: ShieldAlert,
-      tone: "text-critical",
-    },
-    {
-      label: "High risk alerts",
-      value: data?.threats ?? 0,
-      icon: ShieldAlert,
-      tone: "text-danger",
-    },
+    { label: "Safe scans", value: data?.safe ?? 0, icon: ShieldCheck, tone: "text-safe" },
+    { label: "Suspicious scans", value: data?.suspicious ?? 0, icon: ShieldAlert, tone: "text-caution" },
+    { label: "High risk threats", value: data?.highRisk ?? 0, icon: ShieldAlert, tone: "text-critical" },
     { label: "Average trust score", value: data?.avgScore ?? 0, icon: Gauge, tone: "text-accent" },
   ];
 
@@ -135,7 +150,7 @@ function Dashboard() {
         <div>
           <h1 className="font-display text-3xl">Security Dashboard</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Live intelligence across every scan run on this workspace.
+            Real-time security intelligence across every active scan module.
           </p>
         </div>
       </header>
@@ -146,20 +161,20 @@ function Dashboard() {
         />
       )}
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {cards.map((c, i) => (
           <motion.div
             key={c.label}
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.06 }}
+            transition={{ delay: i * 0.05 }}
           >
             <GlassCard className="p-5">
               <div className="flex items-center justify-between">
-                <p className="text-xs uppercase tracking-widest text-muted-foreground">{c.label}</p>
+                <p className="text-[11px] uppercase tracking-widest text-muted-foreground">{c.label}</p>
                 <c.icon className={`size-4 ${c.tone}`} />
               </div>
-              <p className="mt-3 font-display text-4xl">{isLoading ? "—" : c.value}</p>
+              <p className="mt-3 font-display text-3xl">{isLoading ? "—" : c.value}</p>
             </GlassCard>
           </motion.div>
         ))}

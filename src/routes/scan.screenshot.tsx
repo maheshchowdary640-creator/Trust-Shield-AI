@@ -51,6 +51,8 @@ function ScreenshotScanner() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["scan-history"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+      queryClient.refetchQueries({ queryKey: ["dashboard-stats"] });
+      queryClient.refetchQueries({ queryKey: ["scan-history"] });
     },
   });
 
