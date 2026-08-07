@@ -2,31 +2,31 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 const screenshotInput = z.object({
-  imageBase64: z.string().min(100).max(9_000_000),
-  fileName: z.string().min(1).max(200),
-  context: z.string().max(1000).optional(),
+  imageBase64: z.string().min(100).max(25_000_000),
+  fileName: z.string().min(1).max(500),
+  context: z.string().max(5000).optional(),
 });
 
 const jobInput = z.object({
-  company: z.string().max(160).optional(),
-  role: z.string().max(160).optional(),
-  recruiterEmail: z.string().max(200).optional(),
-  offerText: z.string().min(30).max(15000),
+  company: z.string().max(300).optional(),
+  role: z.string().max(300).optional(),
+  recruiterEmail: z.string().max(300).optional(),
+  offerText: z.string().min(10).max(30000),
 });
 
-const urlInput = z.object({ url: z.string().min(3).max(2048) });
+const urlInput = z.object({ url: z.string().min(1).max(4096) });
 
 const voiceInput = z.object({
-  audioBase64: z.string().min(100).max(9_000_000),
+  audioBase64: z.string().min(100).max(25_000_000),
   fileName: z.string().min(1).max(500),
-  type: z.string().min(1).max(100),
-  transcript: z.string().max(10000).optional(),
+  type: z.string().min(1).max(200),
+  transcript: z.string().max(20000).optional(),
 });
 
 const deepfakeInput = z.object({
-  mediaBase64: z.string().min(100).max(12_000_000),
-  fileName: z.string().min(1).max(200),
-  type: z.string().min(1).max(100),
+  mediaBase64: z.string().min(100).max(25_000_000),
+  fileName: z.string().min(1).max(500),
+  type: z.string().min(1).max(200),
 });
 
 export const scanScreenshot = createServerFn({ method: "POST" })
